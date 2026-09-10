@@ -1,7 +1,7 @@
 import React from 'react';
 import { usePortfolio } from '../context/PortfolioContext';
 import { PageTab } from '../types';
-import { Mail, Phone, MessageSquare, MapPin, ArrowUpRight, Shield } from 'lucide-react';
+import { Mail, Phone, MessageSquare, ArrowUpRight, Shield } from 'lucide-react';
 
 export const Footer: React.FC = () => {
   const { setActivePage, siteInfo } = usePortfolio();
@@ -219,15 +219,6 @@ export const Footer: React.FC = () => {
                     <span className="font-medium text-xs sm:text-sm">{siteInfo.email}</span>
                   </div>
                 </a>
-              </li>
-              <li className="flex items-center gap-3 text-slate-400">
-                <div className="w-8 h-8 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-400">
-                  <MapPin className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="text-[11px] text-slate-400">Location</div>
-                  <span className="text-xs">{siteInfo.location}</span>
-                </div>
               </li>
             </ul>
           </div>

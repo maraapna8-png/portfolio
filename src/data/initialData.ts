@@ -12,7 +12,7 @@ export const initialSiteInfo: SiteInfo = {
   websitesCreated: '25+',
   projectsCompleted: '25+',
   happyClients: '23+',
-  email: 'contact@mabdullahazam.dev',
+  email: 'maraapna8@gmail.com',
   phone: '+92 300 1234567',
   whatsapp: '+92 300 1234567',
   location: 'Lahore, Pakistan / Remote Worldwide',
@@ -204,9 +204,6 @@ export const initialProjects: Project[] = [
 ];
 
 export const initialSkills: Skill[] = [
-  { id: 'sk-1', name: 'HTML', level: 95, category: 'Frontend', iconName: 'FileCode', experienceYears: '2+ yrs' },
-  { id: 'sk-2', name: 'CSS', level: 92, category: 'Frontend', iconName: 'Palette', experienceYears: '2+ yrs' },
-  { id: 'sk-3', name: 'JavaScript', level: 90, category: 'Frontend', iconName: 'Code', experienceYears: '2+ yrs' },
   { id: 'sk-4', name: 'React', level: 88, category: 'Frontend', iconName: 'Atom', experienceYears: '2+ yrs' },
   { id: 'sk-5', name: 'Responsive Web Design', level: 96, category: 'Design & UX', iconName: 'Smartphone', experienceYears: '2+ yrs' },
   { id: 'sk-6', name: 'UI/UX', level: 85, category: 'Design & UX', iconName: 'Layout', experienceYears: '2+ yrs' },

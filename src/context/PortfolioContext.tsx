@@ -84,6 +84,9 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
         if (parsed.websitesCreated === '12+') {
           parsed.websitesCreated = '25+';
         }
+        if (parsed.email === 'contact@mabdullahazam.dev') {
+          parsed.email = 'maraapna8@gmail.com';
+        }
         return parsed;
       }
       return initialSiteInfo;
@@ -113,7 +116,13 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
   const [skills, setSkills] = useState<Skill[]>(() => {
     try {
       const saved = localStorage.getItem('portfolio_skills');
-      return saved ? JSON.parse(saved) : initialSkills;
+      if (saved) {
+        const parsed: Skill[] = JSON.parse(saved);
+        return parsed.filter(
+          (s) => s.name !== 'HTML' && s.name !== 'CSS' && s.name !== 'JavaScript'
+        );
+      }
+      return initialSkills;
     } catch {
       return initialSkills;
     }
