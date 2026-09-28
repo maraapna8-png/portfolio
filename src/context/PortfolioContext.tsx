@@ -98,7 +98,23 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
   const [projects, setProjects] = useState<Project[]>(() => {
     try {
       const saved = localStorage.getItem('portfolio_projects');
-      return saved ? JSON.parse(saved) : initialProjects;
+      if (saved) {
+        const parsed: Project[] = JSON.parse(saved);
+        return parsed.map((p) => {
+          if (p.id === 'proj-1' || p.title.toLowerCase().includes('sk tea') || p.imageUrl.includes('1576092768241')) {
+            return {
+              ...p,
+              imageUrl: '/assets/sk_tea_company.jpg',
+              liveUrl: 'https://sk-tea-company.netlify.app/',
+            };
+          }
+          if (p.id === 'proj-3' || p.title.toLowerCase().includes('nexora') || p.imageUrl.includes('1618005182384')) {
+            return { ...p, imageUrl: '/assets/nexora_logo.jpg' };
+          }
+          return p;
+        });
+      }
+      return initialProjects;
     } catch {
       return initialProjects;
     }
@@ -131,7 +147,36 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
   const [galleryItems, setGalleryItems] = useState<GalleryItem[]>(() => {
     try {
       const saved = localStorage.getItem('portfolio_gallery');
-      return saved ? JSON.parse(saved) : initialGalleryItems;
+      if (saved) {
+        const parsed: GalleryItem[] = JSON.parse(saved);
+        return parsed.map((g) => {
+          if (g.id === 'gal-2' || g.title.toLowerCase().includes('sk tea') || g.imageUrl.includes('1576092768241')) {
+            return { ...g, imageUrl: '/assets/sk_tea_company.jpg' };
+          }
+          if (g.id === 'gal-6' || g.title.toLowerCase().includes('nexora') || g.imageUrl.includes('1618005182384')) {
+            return { ...g, imageUrl: '/assets/nexora_logo.jpg' };
+          }
+          if (g.id === 'gal-4' || g.title.toLowerCase().includes('promo video') || g.imageUrl.includes('1536240478700')) {
+            return {
+              ...g,
+              imageUrl: '/assets/nexora_promo_thumb.jpg',
+              videoUrl: '/assets/nexora_promo.mp4',
+              description: '4K Nexora brand promo commercial with holographic UI motion design, sound design, and color grading.',
+            };
+          }
+          if (g.id === 'gal-3' || g.title.toLowerCase().includes('doctor portal')) {
+            return {
+              ...g,
+              title: 'Doctor Portal & Clinic Website',
+              category: 'Websites' as const,
+              description: 'Healthcare patient portal and clinic website for appointments and telehealth.',
+              tags: ['Websites', 'Healthcare', 'Clinic'],
+            };
+          }
+          return g;
+        });
+      }
+      return initialGalleryItems;
     } catch {
       return initialGalleryItems;
     }

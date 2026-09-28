@@ -1,11 +1,47 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { usePortfolio } from '../context/PortfolioContext';
-import { X, ChevronLeft, ChevronRight, Maximize2, Tag, Calendar } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Maximize2, Tag, Calendar, Volume2, VolumeX } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 export const GalleryLightbox: React.FC = () => {
   const { galleryItems, selectedGalleryIndex, closeGalleryLightbox, openGalleryLightbox } =
     usePortfolio();
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [isMuted, setIsMuted] = useState(false);
+
+  const currentItem = selectedGalleryIndex !== null ? galleryItems[selectedGalleryIndex] : null;
+
+  useEffect(() => {
+    if (currentItem?.videoUrl && videoRef.current) {
+      videoRef.current.volume = 1.0;
+      videoRef.current.muted = false;
+      const playPromise = videoRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            setIsMuted(false);
+          })
+          .catch(() => {
+            // Browser blocked unmuted autoplay policy, fall back to muted and show prompt
+            if (videoRef.current) {
+              videoRef.current.muted = true;
+              setIsMuted(true);
+              videoRef.current.play().catch(() => {});
+            }
+          });
+      }
+    }
+  }, [currentItem?.id, currentItem?.videoUrl]);
+
+  const toggleSound = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (videoRef.current) {
+      videoRef.current.muted = false;
+      videoRef.current.volume = 1.0;
+      setIsMuted(false);
+      videoRef.current.play().catch(() => {});
+    }
+  };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -20,8 +56,6 @@ export const GalleryLightbox: React.FC = () => {
   }, [selectedGalleryIndex, galleryItems.length]);
 
   if (selectedGalleryIndex === null || !galleryItems[selectedGalleryIndex]) return null;
-
-  const currentItem = galleryItems[selectedGalleryIndex];
 
   const handlePrev = () => {
     if (selectedGalleryIndex > 0) {
@@ -77,13 +111,35 @@ export const GalleryLightbox: React.FC = () => {
           transition={{ duration: 0.2 }}
           className="relative max-w-5xl max-h-[85vh] w-full flex flex-col items-center justify-center rounded-2xl overflow-hidden bg-[#080d1a] border border-blue-900/50 shadow-2xl shadow-blue-950/80"
         >
-          <div className="relative w-full max-h-[65vh] flex items-center justify-center bg-black/60 overflow-hidden">
-            <img
-              src={currentItem.imageUrl}
-              alt={currentItem.title}
-              className="max-h-[65vh] max-w-full object-contain filter contrast-105"
-              referrerPolicy="no-referrer"
-            />
+          <div className="relative w-full max-h-[65vh] flex items-center justify-center bg-black/80 overflow-hidden">
+            {currentItem.videoUrl ? (
+              <div className="relative w-full flex items-center justify-center">
+                <video
+                  ref={videoRef}
+                  src={currentItem.videoUrl}
+                  poster={currentItem.imageUrl}
+                  controls
+                  playsInline
+                  className="max-h-[65vh] max-w-full object-contain rounded-lg shadow-2xl"
+                />
+                {isMuted && (
+                  <button
+                    onClick={toggleSound}
+                    className="absolute top-4 left-4 z-30 flex items-center gap-2 px-3.5 py-2 rounded-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs shadow-xl transition-all hover:scale-105 active:scale-95 animate-pulse cursor-pointer border border-cyan-300"
+                  >
+                    <VolumeX className="w-4 h-4 text-slate-950" />
+                    <span>Click for Voice & Music</span>
+                  </button>
+                )}
+              </div>
+            ) : (
+              <img
+                src={currentItem.imageUrl}
+                alt={currentItem.title}
+                className="max-h-[65vh] max-w-full object-contain filter contrast-105"
+                referrerPolicy="no-referrer"
+              />
+            )}
           </div>
 
           {/* Bottom Information Bar */}

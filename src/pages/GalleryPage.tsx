@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { usePortfolio } from '../context/PortfolioContext';
-import { Maximize2, Tag, Calendar, Sparkles, Image as ImageIcon } from 'lucide-react';
+import { Maximize2, Tag, Calendar, Sparkles, Image as ImageIcon, Play, Film } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 export const GalleryPage: React.FC = () => {
@@ -70,25 +70,51 @@ export const GalleryPage: React.FC = () => {
                 className="group relative rounded-2xl overflow-hidden bg-[#080d1a] border border-blue-900/40 hover:border-cyan-400/60 transition-all duration-300 shadow-lg hover:shadow-blue-500/20 cursor-pointer flex flex-col"
                 onClick={() => openGalleryLightbox(globalIndex >= 0 ? globalIndex : 0)}
               >
-                {/* Image Frame */}
+                {/* Image/Video Frame */}
                 <div className="relative h-60 w-full overflow-hidden bg-slate-950">
-                  <img
-                    src={item.imageUrl}
-                    alt={item.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 filter brightness-95 group-hover:brightness-105"
-                    referrerPolicy="no-referrer"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#080d1a] via-transparent to-transparent opacity-70" />
+                  {item.videoUrl ? (
+                    <div className="relative w-full h-full">
+                      <video
+                        src={item.videoUrl}
+                        poster={item.imageUrl}
+                        muted
+                        loop
+                        autoPlay
+                        playsInline
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 filter brightness-95 group-hover:brightness-105"
+                      />
+                      {/* Play badge overlay */}
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div className="w-12 h-12 rounded-full bg-blue-600/80 backdrop-blur-md border border-cyan-400/50 flex items-center justify-center text-white shadow-xl shadow-blue-900/50 group-hover:scale-110 transition-transform">
+                          <Play className="w-5 h-5 ml-0.5 fill-white text-white" />
+                        </div>
+                      </div>
+                      <div className="absolute bottom-3 right-3 px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-black/80 backdrop-blur-md text-cyan-300 border border-blue-500/40 flex items-center gap-1">
+                        <span>0:15</span>
+                        <span>•</span>
+                        <span>4K Sound</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <img
+                      src={item.imageUrl}
+                      alt={item.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 filter brightness-95 group-hover:brightness-105"
+                      referrerPolicy="no-referrer"
+                    />
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#080d1a] via-transparent to-transparent opacity-70 pointer-events-none" />
 
                   {/* Category Pill */}
-                  <div className="absolute top-3 left-3">
-                    <span className="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-slate-900/90 text-cyan-300 border border-blue-500/30 shadow-md">
+                  <div className="absolute top-3 left-3 flex items-center gap-1.5 pointer-events-none">
+                    <span className="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-slate-900/90 text-cyan-300 border border-blue-500/30 shadow-md flex items-center gap-1">
+                      {item.videoUrl && <Film className="w-3 h-3 text-cyan-400" />}
                       {item.category}
                     </span>
                   </div>
 
                   {/* Fullscreen icon indicator on hover */}
-                  <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                     <div className="w-8 h-8 rounded-full bg-blue-600/90 text-white flex items-center justify-center shadow-lg">
                       <Maximize2 className="w-4 h-4" />
                     </div>

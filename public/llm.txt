@@ -1,0 +1,31 @@
+# M Abdullah Azam - Portfolio & Profile
+
+> Professional portfolio of M Abdullah Azam: Web Developer, Video Creator, and Digital Creator specializing in responsive web applications, business platforms, and multimedia digital experiences.
+
+## Author Information
+- **Name**: M Abdullah Azam
+- **Primary Roles**: Web Developer, Video Creator, Digital Creator
+- **Email**: maraapna8@gmail.com
+- **WhatsApp / Phone**: +92 300 1234567
+- **Availability**: Available for Freelance & Contract Projects Worldwide
+- **Experience**: 2+ Years of Active Hands-on Engineering
+- **Proven Deliveries**: 25+ Websites Created, 25+ Completed Projects, 23+ Satisfied Clients
+
+## Technical Competencies & Services
+- **Web Development**: Responsive, high-performance web applications built with modern frontend architecture (React, TypeScript, Tailwind CSS, Vite).
+- **Business Websites**: Custom corporate platforms with conversion-focused landing experiences, SEO optimization, and speed tuning.
+- **Portfolio Websites**: Engaging, motion-rich personal brand and creator portfolios.
+- **Video Creation**: High-impact promotional videos, motion graphics, and cinematic content.
+- **CV & Resume Creation**: ATS-friendly digital and printable executive resumes.
+
+## Site Structure & Navigation
+- [Home](/): Introduction hero, live stats overview, featured projects showcase, client testimonials, and quick contact inquiry.
+- [About](/): Detailed professional summary, core competencies, career goals, and downloadable CV.
+- [Projects](/): Comprehensive catalog of completed web platforms, business solutions, and AI-powered apps with live preview and tech stack filters.
+- [Gallery](/): Interactive media gallery featuring website designs, motion work, design assets, and certifications.
+- [Journey & History](/): Chronological career timeline and milestones from 2022 to present.
+- [Contact](/): Interactive contact form, WhatsApp quick-connect, and email communication channel.
+
+## Links & Context Resources
+- [Sitemap](/sitemap.xml): Full XML sitemap of accessible pages.
+- [Robots Directive](/robots.txt): Search engine and AI crawler accessibility rules.

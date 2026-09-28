@@ -1,0 +1,33 @@
+# Robots.txt for M Abdullah Azam Portfolio
+User-agent: *
+Allow: /
+Disallow: /admin
+
+# AI and LLM Web Crawlers
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+# Sitemap and LLM context files
+Sitemap: https://mabdullahazam.dev/sitemap.xml
+Sitemap: /sitemap.xml

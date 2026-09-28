@@ -37,6 +37,7 @@ export interface GalleryItem {
   title: string;
   category: 'My Work' | 'Websites' | 'Designs' | 'Videos' | 'Certificates' | 'Other';
   imageUrl: string;
+  videoUrl?: string;
   description: string;
   date?: string;
   tags?: string[];
