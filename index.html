@@ -8,10 +8,48 @@
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
     <link rel="sitemap" type="application/xml" title="Sitemap" href="/sitemap.xml" />
     <link rel="alternate" type="text/plain" href="/llms.txt" title="LLMs Text Summary" />
+    <meta property="og:site_name" content="M Abdullah Azam Portfolio" />
     <meta property="og:title" content="M Abdullah Azam - Web Developer | Video Creator | Digital Creator" />
     <meta property="og:description" content="Professional portfolio website for M Abdullah Azam - Web Developer, Video Creator, and Digital Creator showcasing projects, services, gallery, journey history, and contact." />
     <meta property="og:type" content="website" />
+    <meta property="og:image" content="/assets/nexora_promo_thumb.jpg" />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="M Abdullah Azam - Web Developer | Video Creator | Digital Creator" />
+    <meta name="twitter:description" content="Professional portfolio website for M Abdullah Azam - Web Developer, Video Creator, and Digital Creator showcasing projects, services, gallery, journey history, and contact." />
+    <meta name="twitter:image" content="/assets/nexora_promo_thumb.jpg" />
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Person",
+          "@id": "https://mabdullahazam.dev/#person",
+          "name": "M Abdullah Azam",
+          "jobTitle": ["Web Developer", "Video Creator", "Digital Creator"],
+          "email": "maraapna8@gmail.com",
+          "description": "Professional Web Developer & Digital Creator with 2+ years of experience delivering modern responsive web applications, business platforms, and 4K motion video content.",
+          "knowsAbout": ["React", "TypeScript", "Tailwind CSS", "Vite", "Node.js", "Video Production", "Motion Graphics", "Full-Stack Development"]
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://mabdullahazam.dev/#website",
+          "url": "https://mabdullahazam.dev/",
+          "name": "M Abdullah Azam Portfolio",
+          "description": "Showcase of web development, digital creation, and video production work by M Abdullah Azam.",
+          "author": {
+            "@id": "https://mabdullahazam.dev/#person"
+          }
+        },
+        {
+          "@type": "ProfessionalService",
+          "name": "M Abdullah Azam - Digital Services",
+          "description": "Web Development, Business Websites, Personal Portfolios, Video Creation, and CV Designing.",
+          "email": "maraapna8@gmail.com",
+          "priceRange": "$$"
+        }
+      ]
+    }
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,9 +57,6 @@
   <body class="bg-[#070b14] text-slate-100 font-['Outfit',sans-serif] antialiased selection:bg-blue-600/30 selection:text-blue-200">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-  
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-</script>/body>
+  </body>
 </html>
 

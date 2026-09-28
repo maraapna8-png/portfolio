@@ -1,31 +1,44 @@
-# M Abdullah Azam - Portfolio & Profile
+# M Abdullah Azam - Portfolio & Professional Profile
+> High-performance Web Developer, Video Creator, and Digital Creator specializing in responsive React/TypeScript web applications, business platforms, and multimedia digital experiences.
 
-> Professional portfolio of M Abdullah Azam: Web Developer, Video Creator, and Digital Creator specializing in responsive web applications, business platforms, and multimedia digital experiences.
-
-## Author Information
-- **Name**: M Abdullah Azam
-- **Primary Roles**: Web Developer, Video Creator, Digital Creator
+## Core Identity
+- **Full Name**: M Abdullah Azam
+- **Primary Roles**: Web Developer | Video Creator | Digital Creator
 - **Email**: maraapna8@gmail.com
-- **WhatsApp / Phone**: +92 300 1234567
-- **Availability**: Available for Freelance & Contract Projects Worldwide
-- **Experience**: 2+ Years of Active Hands-on Engineering
-- **Proven Deliveries**: 25+ Websites Created, 25+ Completed Projects, 23+ Satisfied Clients
+- **Direct Inquiry**: maraapna8@gmail.com
+- **WhatsApp Support**: Available via interactive portfolio button
+- **Location**: Multan, Pakistan (Serving clients worldwide)
+- **Status**: Available for Freelance, Full-time Remote, & Contract Work
+- **Track Record**: 25+ Completed Projects, 25+ Deployed Websites, 23+ Satisfied Clients, 2+ Years Experience
 
-## Technical Competencies & Services
-- **Web Development**: Responsive, high-performance web applications built with modern frontend architecture (React, TypeScript, Tailwind CSS, Vite).
-- **Business Websites**: Custom corporate platforms with conversion-focused landing experiences, SEO optimization, and speed tuning.
-- **Portfolio Websites**: Engaging, motion-rich personal brand and creator portfolios.
-- **Video Creation**: High-impact promotional videos, motion graphics, and cinematic content.
-- **CV & Resume Creation**: ATS-friendly digital and printable executive resumes.
+## Technical Expertise
+- **Frontend Development**: React 19, TypeScript, JavaScript (ESNext), Tailwind CSS 4, Framer Motion, Vite, HTML5, CSS3
+- **Full-Stack & APIs**: Node.js, Express, REST APIs, Google Gemini AI API, Firebase Authentication & Firestore
+- **Multimedia & Video**: 4K Video Editing, Motion Graphics, Promo Videos, Cinematic Voiceovers & Soundtracks
+- **Performance & SEO**: Modern Core Web Vitals, Structured Data (JSON-LD), XML Sitemaps, Robots Directives, LLMs.txt integration
 
-## Site Structure & Navigation
-- [Home](/): Introduction hero, live stats overview, featured projects showcase, client testimonials, and quick contact inquiry.
-- [About](/): Detailed professional summary, core competencies, career goals, and downloadable CV.
-- [Projects](/): Comprehensive catalog of completed web platforms, business solutions, and AI-powered apps with live preview and tech stack filters.
-- [Gallery](/): Interactive media gallery featuring website designs, motion work, design assets, and certifications.
-- [Journey & History](/): Chronological career timeline and milestones from 2022 to present.
-- [Contact](/): Interactive contact form, WhatsApp quick-connect, and email communication channel.
+## Featured Live Deployments
+- [SK Tea Company](https://sk-tea-company.netlify.app/): Artisanal e-commerce presentation platform engineered with React, Tailwind CSS, TypeScript, and Framer Motion.
+- [AI Nexoraa](https://ai-nexoraa.netlify.app/): Futuristic AI-powered digital platform integrating Google Gemini AI and responsive streaming UI.
+- [Dr. Abdullah Medical Clinic](https://dr-abdullah-clinic.netlify.app/): Healthcare appointment booking and patient portal.
+- [Nexora 3D Video & Audio Showcase](/assets/nexora_promo.mp4): 4K motion graphics promo video with custom narration and ambient synth soundtrack.
 
-## Links & Context Resources
-- [Sitemap](/sitemap.xml): Full XML sitemap of accessible pages.
-- [Robots Directive](/robots.txt): Search engine and AI crawler accessibility rules.
+## Services Offered
+1. **Full-Stack Web Development**: Custom responsive web applications built from scratch with clean code, type safety, and maximum speed.
+2. **Business Websites**: Conversion-optimized landing pages and brand showcases tailored for businesses and startups.
+3. **Portfolio & Personal Branding**: Interactive, dark-mode, animated portfolios designed to convert visitors into clients.
+4. **Video Creation & Motion Graphics**: High-impact promotional reels, brand reveals, and multimedia content.
+5. **Resume & CV Creation**: Modern ATS-compatible developer and executive CVs.
+
+## Site Navigation
+- [Home Page](https://mabdullahazam.dev/): Hero, highlights, quick project previews, and metrics.
+- [About](https://mabdullahazam.dev/#about): Biography, skills breakdown, and career background.
+- [Projects](https://mabdullahazam.dev/#projects): Filterable showcase with live links and source code.
+- [Gallery](https://mabdullahazam.dev/#gallery): Screenshots, 4K video player, and certifications.
+- [History](https://mabdullahazam.dev/#history): Interactive career milestones and achievements.
+- [Contact](https://mabdullahazam.dev/#contact): Direct contact form and message submission.
+
+## Structured Files
+- [Sitemap](https://mabdullahazam.dev/sitemap.xml): Complete XML sitemap for search crawlers.
+- [Robots](https://mabdullahazam.dev/robots.txt): Machine crawler access rules.
+- [Full LLM Context](https://mabdullahazam.dev/llms-full.txt): Comprehensive deep context for LLM agents.

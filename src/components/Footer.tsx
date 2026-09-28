@@ -225,8 +225,42 @@ export const Footer: React.FC = () => {
         </div>
 
         {/* Bottom copyright & admin access */}
-        <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400">
+        <div className="pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-400">
           <p>© 2026 M Abdullah Azam. All Rights Reserved.</p>
+
+          {/* Machine & SEO metadata links */}
+          <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-500 font-mono">
+            <a
+              href="/sitemap.xml"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-cyan-400 transition-colors"
+              title="View XML Sitemap"
+            >
+              sitemap.xml
+            </a>
+            <span>•</span>
+            <a
+              href="/robots.txt"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-cyan-400 transition-colors"
+              title="View Robots Directives"
+            >
+              robots.txt
+            </a>
+            <span>•</span>
+            <a
+              href="/llms.txt"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-cyan-400 transition-colors"
+              title="View LLMs Machine Context"
+            >
+              llms.txt
+            </a>
+          </div>
+
           <div className="flex items-center gap-4">
             <button
               onClick={() => handleNav('admin')}

@@ -1,0 +1,8 @@
+# M Abdullah Azam - Portfolio & Professional Profile
+> High-performance Web Developer, Video Creator, and Digital Creator specializing in responsive React/TypeScript web applications, business platforms, and multimedia digital experiences.
+
+- Author: M Abdullah Azam
+- Email: maraapna8@gmail.com
+- Full Documentation: https://mabdullahazam.dev/llms.txt
+- Sitemap: https://mabdullahazam.dev/sitemap.xml
+- Robots: https://mabdullahazam.dev/robots.txt

@@ -3,40 +3,53 @@
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
         http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+  <!-- Homepage & Hero Section -->
   <url>
     <loc>https://mabdullahazam.dev/</loc>
-    <lastmod>2026-09-12T00:00:00+00:00</lastmod>
-    <changefreq>weekly</changefreq>
+    <lastmod>2026-09-28T00:00:00+00:00</lastmod>
+    <changefreq>daily</changefreq>
     <priority>1.00</priority>
   </url>
+  <!-- About Section -->
   <url>
     <loc>https://mabdullahazam.dev/#about</loc>
-    <lastmod>2026-09-12T00:00:00+00:00</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.90</priority>
-  </url>
-  <url>
-    <loc>https://mabdullahazam.dev/#projects</loc>
-    <lastmod>2026-09-12T00:00:00+00:00</lastmod>
+    <lastmod>2026-09-28T00:00:00+00:00</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.90</priority>
   </url>
+  <!-- Featured Projects Showcase -->
+  <url>
+    <loc>https://mabdullahazam.dev/#projects</loc>
+    <lastmod>2026-09-28T00:00:00+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.95</priority>
+  </url>
+  <!-- Services & Solutions -->
+  <url>
+    <loc>https://mabdullahazam.dev/#services</loc>
+    <lastmod>2026-09-28T00:00:00+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+  <!-- Media Gallery & Motion Video Works -->
   <url>
     <loc>https://mabdullahazam.dev/#gallery</loc>
-    <lastmod>2026-09-12T00:00:00+00:00</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.80</priority>
+    <lastmod>2026-09-28T00:00:00+00:00</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
   </url>
+  <!-- Career Journey & Experience History -->
   <url>
     <loc>https://mabdullahazam.dev/#history</loc>
-    <lastmod>2026-09-12T00:00:00+00:00</lastmod>
+    <lastmod>2026-09-28T00:00:00+00:00</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.70</priority>
+    <priority>0.75</priority>
   </url>
+  <!-- Contact & Consultation Inquiries -->
   <url>
     <loc>https://mabdullahazam.dev/#contact</loc>
-    <lastmod>2026-09-12T00:00:00+00:00</lastmod>
+    <lastmod>2026-09-28T00:00:00+00:00</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.85</priority>
+    <priority>0.90</priority>
   </url>
 </urlset>

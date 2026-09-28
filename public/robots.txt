@@ -1,9 +1,9 @@
-# Robots.txt for M Abdullah Azam Portfolio
+# Robots.txt for M Abdullah Azam - Professional Portfolio & Digital Creator
 User-agent: *
 Allow: /
 Disallow: /admin
 
-# AI and LLM Web Crawlers
+# AI & LLM Search Engine Crawlers
 User-agent: GPTBot
 Allow: /
 
@@ -28,6 +28,17 @@ Allow: /
 User-agent: CCBot
 Allow: /
 
-# Sitemap and LLM context files
-Sitemap: https://mabdullahazam.dev/sitemap.xml
+User-agent: Bytespider
+Allow: /
+
+User-agent: cohere-ai
+Allow: /
+
+# Sitemaps & Machine-Readable Context
 Sitemap: /sitemap.xml
+Sitemap: https://mabdullahazam.dev/sitemap.xml
+
+# LLM Direct Instruction Files
+# Reference: https://llmstxt.org
+# llms.txt: /llms.txt
+# llms-full.txt: /llms-full.txt
