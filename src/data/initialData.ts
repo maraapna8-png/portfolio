@@ -128,7 +128,7 @@ export const initialProjects: Project[] = [
     ],
     technologies: ['React', 'TypeScript', 'Tailwind CSS', 'Gemini AI API', 'Node.js'],
     imageUrl: '/assets/nexora_logo.jpg',
-    liveUrl: 'https://example.com/ai-nexoraa',
+    liveUrl: 'https://ai-nexoraa.netlify.app/',
     githubUrl: 'https://github.com/mabdullahazam/ai-nexoraa-platform',
     challenges: 'Creating real-time streaming output displays with markdown formatting without layout thrashing.',
     solution: 'Used state-driven buffer queues with custom syntax styling and debounced token visualizers.',

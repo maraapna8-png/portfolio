@@ -109,7 +109,11 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
             };
           }
           if (p.id === 'proj-3' || p.title.toLowerCase().includes('nexora') || p.imageUrl.includes('1618005182384')) {
-            return { ...p, imageUrl: '/assets/nexora_logo.jpg' };
+            return {
+              ...p,
+              imageUrl: '/assets/nexora_logo.jpg',
+              liveUrl: 'https://ai-nexoraa.netlify.app/',
+            };
           }
           return p;
         });
