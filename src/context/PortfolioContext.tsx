@@ -18,6 +18,7 @@ import {
   initialContactSubmissions,
   initialSiteInfo,
 } from '../data/initialData';
+import { resolveGalleryMedia, extractGoogleDriveId } from '../utils/mediaUtils';
 
 interface PortfolioContextType {
   activePage: PageTab;
@@ -28,6 +29,8 @@ interface PortfolioContextType {
   addProject: (project: Omit<Project, 'id'>) => void;
   updateProject: (id: string, updated: Partial<Project>) => void;
   deleteProject: (id: string) => void;
+  moveProject: (id: string, direction: 'up' | 'down') => void;
+  reorderProjects: (startIndex: number, endIndex: number) => void;
   services: Service[];
   updateService: (id: string, updated: Partial<Service>) => void;
   addService: (service: Omit<Service, 'id'>) => void;
@@ -40,6 +43,8 @@ interface PortfolioContextType {
   addGalleryItem: (item: Omit<GalleryItem, 'id'>) => void;
   updateGalleryItem: (id: string, updated: Partial<GalleryItem>) => void;
   deleteGalleryItem: (id: string) => void;
+  moveGalleryItem: (id: string, direction: 'up' | 'down' | 'left' | 'right') => void;
+  reorderGalleryItems: (startIndex: number, endIndex: number) => void;
   timelineItems: TimelineItem[];
   addTimelineItem: (item: Omit<TimelineItem, 'id'>) => void;
   updateTimelineItem: (id: string, updated: Partial<TimelineItem>) => void;
@@ -48,6 +53,7 @@ interface PortfolioContextType {
   submitContact: (submission: Omit<ContactSubmission, 'id' | 'createdAt' | 'read'>) => void;
   markContactRead: (id: string, read: boolean) => void;
   deleteContactSubmission: (id: string) => void;
+  clearAllContactSubmissions: () => void;
   isAdminAuthenticated: boolean;
   adminLogin: (password: string) => boolean;
   adminLogout: () => void;
@@ -81,11 +87,28 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
       const saved = localStorage.getItem('portfolio_site_info');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed.websitesCreated === '12+') {
-          parsed.websitesCreated = '25+';
+        if (parsed.websitesCreated === '12+' || parsed.websitesCreated === '25+' || !parsed.websitesCreated) {
+          parsed.websitesCreated = '10+';
+        }
+        if (parsed.projectsCompleted === '25+' || !parsed.projectsCompleted) {
+          parsed.projectsCompleted = '10+';
+        }
+        if (parsed.happyClients === '23+' || !parsed.happyClients) {
+          parsed.happyClients = '10+';
         }
         if (parsed.email === 'contact@mabdullahazam.dev') {
           parsed.email = 'maraapna8@gmail.com';
+        }
+        if (!parsed.phone || parsed.phone.includes('1234567')) {
+          parsed.phone = '+92 343 0277466';
+        }
+        if (!parsed.whatsapp || parsed.whatsapp.includes('1234567')) {
+          parsed.whatsapp = '+92 343 0277466';
+        }
+        try {
+          localStorage.setItem('portfolio_site_info', JSON.stringify(parsed));
+        } catch {
+          // ignore
         }
         return parsed;
       }
@@ -113,6 +136,12 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
               ...p,
               imageUrl: '/assets/nexora_logo.jpg',
               liveUrl: 'https://ai-nexoraa.netlify.app/',
+            };
+          }
+          if (p.id === 'proj-4' || p.title.toLowerCase().includes('personal portfolio')) {
+            return {
+              ...p,
+              liveUrl: 'https://abdullah-azam.netlify.app/',
             };
           }
           return p;
@@ -153,7 +182,7 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
       const saved = localStorage.getItem('portfolio_gallery');
       if (saved) {
         const parsed: GalleryItem[] = JSON.parse(saved);
-        return parsed.map((g) => {
+        let list = parsed.map((g) => {
           if (g.id === 'gal-2' || g.title.toLowerCase().includes('sk tea') || g.imageUrl.includes('1576092768241')) {
             return { ...g, imageUrl: '/assets/sk_tea_company.jpg' };
           }
@@ -177,8 +206,46 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
               tags: ['Websites', 'Healthcare', 'Clinic'],
             };
           }
+          // Fix Google Drive video entries, including tea promotional video
+          if (
+            g.title.toLowerCase().includes('tea promotional video') ||
+            g.imageUrl?.includes('drive.google.com') ||
+            g.videoUrl?.includes('drive.google.com') ||
+            g.imageUrl?.includes('1c1y3DN') ||
+            g.videoUrl?.includes('1c1y3DN')
+          ) {
+            const driveUrl =
+              g.videoUrl && g.videoUrl.includes('drive.google.com')
+                ? g.videoUrl
+                : g.imageUrl && g.imageUrl.includes('drive.google.com')
+                ? g.imageUrl
+                : 'https://drive.google.com/file/d/1c1y3DN_7hynbpY09-zZFGP2gORXBXgTB/view?usp=sharing';
+            const driveId = extractGoogleDriveId(driveUrl) || '1c1y3DN_7hynbpY09-zZFGP2gORXBXgTB';
+            return {
+              ...g,
+              category: 'Videos' as const,
+              videoUrl: driveUrl,
+              imageUrl: `https://drive.google.com/thumbnail?id=${driveId}&sz=w1000`,
+            };
+          }
           return g;
         });
+
+        // Ensure tea promotional video is present if not already added
+        const hasTeaPromo = list.some(
+          (g) =>
+            g.title.toLowerCase().includes('tea promotional video') ||
+            g.videoUrl?.includes('1c1y3DN_7hynbpY09') ||
+            g.id === 'gal-tea-promo'
+        );
+        if (!hasTeaPromo) {
+          const teaItem = initialGalleryItems.find((g) => g.id === 'gal-tea-promo');
+          if (teaItem) {
+            list = [teaItem, ...list];
+          }
+        }
+
+        return list;
       }
       return initialGalleryItems;
     } catch {
@@ -279,6 +346,56 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
     showToast('Project removed');
   };
 
+  const moveProject = (id: string, direction: 'up' | 'down') => {
+    if (!isAdminAuthenticated) {
+      showToast('Admin authorization required');
+      return;
+    }
+    setProjects((prev) => {
+      const index = prev.findIndex((p) => p.id === id);
+      if (index === -1) return prev;
+      const targetIndex = direction === 'up' ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= prev.length) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(index, 1);
+      next.splice(targetIndex, 0, moved);
+      try {
+        localStorage.setItem('portfolio_projects', JSON.stringify(next));
+      } catch (err) {
+        console.error('Failed to sync projects to localStorage', err);
+      }
+      return next;
+    });
+    showToast(`Project moved ${direction}`);
+  };
+
+  const reorderProjects = (startIndex: number, endIndex: number) => {
+    if (!isAdminAuthenticated) {
+      showToast('Admin authorization required');
+      return;
+    }
+    if (startIndex === endIndex) return;
+    setProjects((prev) => {
+      if (
+        startIndex < 0 ||
+        startIndex >= prev.length ||
+        endIndex < 0 ||
+        endIndex >= prev.length
+      )
+        return prev;
+      const next = [...prev];
+      const [moved] = next.splice(startIndex, 1);
+      next.splice(endIndex, 0, moved);
+      try {
+        localStorage.setItem('portfolio_projects', JSON.stringify(next));
+      } catch (err) {
+        console.error('Failed to sync projects to localStorage', err);
+      }
+      return next;
+    });
+    showToast('Projects reordered successfully');
+  };
+
   const updateService = (id: string, updated: Partial<Service>) => {
     setServices((prev) => prev.map((s) => (s.id === id ? { ...s, ...updated } : s)));
     showToast('Service updated');
@@ -312,19 +429,97 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
   };
 
   const addGalleryItem = (item: Omit<GalleryItem, 'id'>) => {
-    const newItem: GalleryItem = { ...item, id: `gal-${Date.now()}` };
+    let processed = { ...item };
+    const media = resolveGalleryMedia(processed);
+    if (media.isVideo) {
+      processed.category = 'Videos';
+      if (!processed.videoUrl && processed.imageUrl) {
+        processed.videoUrl = processed.imageUrl;
+      }
+      if (media.posterUrl) {
+        processed.imageUrl = media.posterUrl;
+      }
+    }
+    const newItem: GalleryItem = { ...processed, id: `gal-${Date.now()}` };
     setGalleryItems((prev) => [newItem, ...prev]);
-    showToast('Gallery image added');
+    showToast(media.isVideo ? 'Video artifact added' : 'Gallery item added');
   };
 
   const updateGalleryItem = (id: string, updated: Partial<GalleryItem>) => {
-    setGalleryItems((prev) => prev.map((g) => (g.id === id ? { ...g, ...updated } : g)));
-    showToast('Gallery image updated');
+    setGalleryItems((prev) =>
+      prev.map((g) => {
+        if (g.id !== id) return g;
+        const merged = { ...g, ...updated };
+        const media = resolveGalleryMedia(merged);
+        if (media.isVideo) {
+          merged.category = 'Videos';
+          if (!merged.videoUrl && merged.imageUrl) {
+            merged.videoUrl = merged.imageUrl;
+          }
+          if (media.posterUrl) {
+            merged.imageUrl = media.posterUrl;
+          }
+        }
+        return merged;
+      })
+    );
+    showToast('Gallery item updated');
   };
 
   const deleteGalleryItem = (id: string) => {
     setGalleryItems((prev) => prev.filter((g) => g.id !== id));
     showToast('Gallery item removed');
+  };
+
+  const moveGalleryItem = (id: string, direction: 'up' | 'down' | 'left' | 'right') => {
+    if (!isAdminAuthenticated) {
+      showToast('Admin authorization required');
+      return;
+    }
+    setGalleryItems((prev) => {
+      const index = prev.findIndex((g) => g.id === id);
+      if (index === -1) return prev;
+      const isEarlier = direction === 'up' || direction === 'left';
+      const targetIndex = isEarlier ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= prev.length) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(index, 1);
+      next.splice(targetIndex, 0, moved);
+      try {
+        localStorage.setItem('portfolio_gallery', JSON.stringify(next));
+      } catch (err) {
+        console.error('Failed to sync gallery to localStorage', err);
+      }
+      return next;
+    });
+    showToast('Gallery item moved');
+  };
+
+  const reorderGalleryItems = (startIndex: number, endIndex: number) => {
+    if (!isAdminAuthenticated) {
+      showToast('Admin authorization required');
+      return;
+    }
+    if (startIndex === endIndex) return;
+    setGalleryItems((prev) => {
+      if (
+        startIndex < 0 ||
+        startIndex >= prev.length ||
+        endIndex < 0 ||
+        endIndex >= prev.length
+      )
+        return prev;
+      const next = [...prev];
+      const [moved] = next.splice(startIndex, 1);
+      next.splice(endIndex, 0, moved);
+      try {
+        localStorage.setItem('portfolio_gallery', JSON.stringify(next));
+      } catch (err) {
+        console.error('Failed to sync gallery to localStorage', err);
+      }
+      return next;
+    });
+    showToast('Gallery items reordered successfully');
   };
 
   const addTimelineItem = (item: Omit<TimelineItem, 'id'>) => {
@@ -358,8 +553,26 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
   };
 
   const deleteContactSubmission = (id: string) => {
-    setContactSubmissions((prev) => prev.filter((c) => c.id !== id));
-    showToast('Message deleted');
+    setContactSubmissions((prev) => {
+      const updated = prev.filter((c) => c.id !== id);
+      try {
+        localStorage.setItem('portfolio_contacts', JSON.stringify(updated));
+      } catch (err) {
+        console.error('Failed to sync contacts deletion to localStorage', err);
+      }
+      return updated;
+    });
+    showToast('Inquiry deleted successfully');
+  };
+
+  const clearAllContactSubmissions = () => {
+    setContactSubmissions([]);
+    try {
+      localStorage.setItem('portfolio_contacts', JSON.stringify([]));
+    } catch (err) {
+      console.error('Failed to clear contacts in localStorage', err);
+    }
+    showToast('All client inquiries cleared');
   };
 
   const adminLogin = (password: string): boolean => {
@@ -408,6 +621,8 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
         addProject,
         updateProject,
         deleteProject,
+        moveProject,
+        reorderProjects,
         services,
         updateService,
         addService,
@@ -420,6 +635,8 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
         addGalleryItem,
         updateGalleryItem,
         deleteGalleryItem,
+        moveGalleryItem,
+        reorderGalleryItems,
         timelineItems,
         addTimelineItem,
         updateTimelineItem,
@@ -428,6 +645,7 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
         submitContact,
         markContactRead,
         deleteContactSubmission,
+        clearAllContactSubmissions,
         isAdminAuthenticated,
         adminLogin,
         adminLogout,

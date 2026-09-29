@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { usePortfolio } from '../context/PortfolioContext';
 import { Maximize2, Tag, Calendar, Sparkles, Image as ImageIcon, Play, Film } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { resolveGalleryMedia } from '../utils/mediaUtils';
 
 export const GalleryPage: React.FC = () => {
   const { galleryItems, openGalleryLightbox } = usePortfolio();
@@ -61,6 +62,8 @@ export const GalleryPage: React.FC = () => {
           {filteredItems.map((item, index) => {
             // Find actual index in global galleryItems for the lightbox
             const globalIndex = galleryItems.findIndex((g) => g.id === item.id);
+            const media = resolveGalleryMedia(item);
+
             return (
               <motion.div
                 key={item.id}
@@ -72,11 +75,11 @@ export const GalleryPage: React.FC = () => {
               >
                 {/* Image/Video Frame */}
                 <div className="relative h-60 w-full overflow-hidden bg-slate-950">
-                  {item.videoUrl ? (
+                  {media.isVideo && media.videoType === 'html5' && media.streamUrl ? (
                     <div className="relative w-full h-full">
                       <video
-                        src={item.videoUrl}
-                        poster={item.imageUrl}
+                        src={media.streamUrl}
+                        poster={media.posterUrl}
                         muted
                         loop
                         autoPlay
@@ -90,25 +93,60 @@ export const GalleryPage: React.FC = () => {
                         </div>
                       </div>
                       <div className="absolute bottom-3 right-3 px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-black/80 backdrop-blur-md text-cyan-300 border border-blue-500/40 flex items-center gap-1">
-                        <span>0:15</span>
+                        <span>Video</span>
                         <span>•</span>
-                        <span>4K Sound</span>
+                        <span>Sound</span>
                       </div>
                     </div>
                   ) : (
-                    <img
-                      src={item.imageUrl}
-                      alt={item.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 filter brightness-95 group-hover:brightness-105"
-                      referrerPolicy="no-referrer"
-                    />
+                    <div className="relative w-full h-full">
+                      <img
+                        src={media.posterUrl}
+                        alt={item.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 filter brightness-95 group-hover:brightness-105"
+                        referrerPolicy="no-referrer"
+                        onError={(e) => {
+                          const isTea = item.title.toLowerCase().includes('tea') || item.category === 'Videos';
+                          (e.target as HTMLImageElement).src = isTea
+                            ? 'https://images.unsplash.com/photo-1544787219-7f47ccb76574?auto=format&fit=crop&w=1000&q=80'
+                            : 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=1000&q=80';
+                        }}
+                      />
+                      {media.isVideo && (
+                        <>
+                          {/* Play button overlay */}
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <div className="w-13 h-13 rounded-full bg-blue-600/90 backdrop-blur-md border border-cyan-300/60 flex items-center justify-center text-white shadow-xl shadow-blue-900/80 group-hover:scale-115 transition-all">
+                              <Play className="w-6 h-6 ml-0.5 fill-white text-white" />
+                            </div>
+                          </div>
+                          {/* Media Type Badge */}
+                          <div className="absolute bottom-3 right-3 px-2.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-black/85 backdrop-blur-md text-cyan-300 border border-blue-500/40 flex items-center gap-1.5 shadow-lg">
+                            <Film className="w-3 h-3 text-cyan-400" />
+                            <span>
+                              {media.videoType === 'gdrive'
+                                ? 'Drive Video'
+                                : media.videoType === 'youtube'
+                                ? 'YouTube'
+                                : 'HD Video'}
+                            </span>
+                            <span>•</span>
+                            <span>Play</span>
+                          </div>
+                        </>
+                      )}
+                    </div>
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-[#080d1a] via-transparent to-transparent opacity-70 pointer-events-none" />
 
                   {/* Category Pill */}
                   <div className="absolute top-3 left-3 flex items-center gap-1.5 pointer-events-none">
                     <span className="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-slate-900/90 text-cyan-300 border border-blue-500/30 shadow-md flex items-center gap-1">
-                      {item.videoUrl && <Film className="w-3 h-3 text-cyan-400" />}
+                      {media.isVideo ? (
+                        <Film className="w-3 h-3 text-cyan-400" />
+                      ) : (
+                        <ImageIcon className="w-3 h-3 text-blue-400" />
+                      )}
                       {item.category}
                     </span>
                   </div>

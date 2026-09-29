@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { usePortfolio } from '../context/PortfolioContext';
-import { X, ChevronLeft, ChevronRight, Maximize2, Tag, Calendar, Volume2, VolumeX } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Maximize2, Tag, Calendar, Volume2, VolumeX, ExternalLink, Film } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { resolveGalleryMedia } from '../utils/mediaUtils';
 
 export const GalleryLightbox: React.FC = () => {
   const { galleryItems, selectedGalleryIndex, closeGalleryLightbox, openGalleryLightbox } =
@@ -10,9 +11,10 @@ export const GalleryLightbox: React.FC = () => {
   const [isMuted, setIsMuted] = useState(false);
 
   const currentItem = selectedGalleryIndex !== null ? galleryItems[selectedGalleryIndex] : null;
+  const media = currentItem ? resolveGalleryMedia(currentItem) : null;
 
   useEffect(() => {
-    if (currentItem?.videoUrl && videoRef.current) {
+    if (media?.isVideo && media.videoType === 'html5' && videoRef.current) {
       videoRef.current.volume = 1.0;
       videoRef.current.muted = false;
       const playPromise = videoRef.current.play();
@@ -31,7 +33,7 @@ export const GalleryLightbox: React.FC = () => {
           });
       }
     }
-  }, [currentItem?.id, currentItem?.videoUrl]);
+  }, [currentItem?.id, media?.isVideo, media?.videoType]);
 
   const toggleSound = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -111,33 +113,69 @@ export const GalleryLightbox: React.FC = () => {
           transition={{ duration: 0.2 }}
           className="relative max-w-5xl max-h-[85vh] w-full flex flex-col items-center justify-center rounded-2xl overflow-hidden bg-[#080d1a] border border-blue-900/50 shadow-2xl shadow-blue-950/80"
         >
-          <div className="relative w-full max-h-[65vh] flex items-center justify-center bg-black/80 overflow-hidden">
-            {currentItem.videoUrl ? (
-              <div className="relative w-full flex items-center justify-center">
-                <video
-                  ref={videoRef}
-                  src={currentItem.videoUrl}
-                  poster={currentItem.imageUrl}
-                  controls
-                  playsInline
-                  className="max-h-[65vh] max-w-full object-contain rounded-lg shadow-2xl"
-                />
-                {isMuted && (
-                  <button
-                    onClick={toggleSound}
-                    className="absolute top-4 left-4 z-30 flex items-center gap-2 px-3.5 py-2 rounded-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs shadow-xl transition-all hover:scale-105 active:scale-95 animate-pulse cursor-pointer border border-cyan-300"
-                  >
-                    <VolumeX className="w-4 h-4 text-slate-950" />
-                    <span>Click for Voice & Music</span>
-                  </button>
-                )}
-              </div>
+          <div className="relative w-full max-h-[65vh] flex items-center justify-center bg-black/90 overflow-hidden">
+            {media?.isVideo ? (
+              media.videoType === 'gdrive' && media.embedUrl ? (
+                <div className="relative w-full aspect-video max-h-[65vh] flex items-center justify-center bg-black">
+                  <iframe
+                    src={media.embedUrl}
+                    title={currentItem.title}
+                    className="w-full h-full border-0 min-h-[360px] sm:min-h-[460px]"
+                    allow="autoplay; encrypted-media; fullscreen"
+                    allowFullScreen
+                  />
+                </div>
+              ) : media.videoType === 'youtube' && media.embedUrl ? (
+                <div className="relative w-full aspect-video max-h-[65vh] flex items-center justify-center bg-black">
+                  <iframe
+                    src={media.embedUrl}
+                    title={currentItem.title}
+                    className="w-full h-full border-0 min-h-[360px] sm:min-h-[460px]"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                  />
+                </div>
+              ) : media.videoType === 'vimeo' && media.embedUrl ? (
+                <div className="relative w-full aspect-video max-h-[65vh] flex items-center justify-center bg-black">
+                  <iframe
+                    src={media.embedUrl}
+                    title={currentItem.title}
+                    className="w-full h-full border-0 min-h-[360px] sm:min-h-[460px]"
+                    allow="autoplay; fullscreen; picture-in-picture"
+                    allowFullScreen
+                  />
+                </div>
+              ) : (
+                <div className="relative w-full flex items-center justify-center">
+                  <video
+                    ref={videoRef}
+                    src={media.streamUrl || currentItem.videoUrl}
+                    poster={media.posterUrl}
+                    controls
+                    playsInline
+                    className="max-h-[65vh] max-w-full object-contain rounded-lg shadow-2xl"
+                  />
+                  {isMuted && (
+                    <button
+                      onClick={toggleSound}
+                      className="absolute top-4 left-4 z-30 flex items-center gap-2 px-3.5 py-2 rounded-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs shadow-xl transition-all hover:scale-105 active:scale-95 animate-pulse cursor-pointer border border-cyan-300"
+                    >
+                      <VolumeX className="w-4 h-4 text-slate-950" />
+                      <span>Click for Sound</span>
+                    </button>
+                  )}
+                </div>
+              )
             ) : (
               <img
-                src={currentItem.imageUrl}
+                src={media?.posterUrl || currentItem.imageUrl}
                 alt={currentItem.title}
                 className="max-h-[65vh] max-w-full object-contain filter contrast-105"
                 referrerPolicy="no-referrer"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src =
+                    'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=1200&q=80';
+                }}
               />
             )}
           </div>
@@ -146,7 +184,8 @@ export const GalleryLightbox: React.FC = () => {
           <div className="w-full p-5 sm:p-6 bg-[#080d1a] border-t border-blue-900/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="space-y-1">
               <div className="flex items-center gap-3">
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-600/30 text-cyan-300 border border-blue-500/40">
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-600/30 text-cyan-300 border border-blue-500/40 flex items-center gap-1">
+                  {media?.isVideo && <Film className="w-3 h-3 text-cyan-400" />}
                   {currentItem.category}
                 </span>
                 {currentItem.date && (
@@ -167,19 +206,39 @@ export const GalleryLightbox: React.FC = () => {
               </p>
             </div>
 
-            {/* Tags */}
-            {currentItem.tags && currentItem.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 shrink-0">
-                {currentItem.tags.map((t, idx) => (
-                  <span
-                    key={idx}
-                    className="px-2 py-0.5 rounded text-[11px] bg-slate-900 border border-slate-800 text-slate-400"
-                  >
-                    #{t}
+            {/* Actions / External Link & Tags */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 shrink-0">
+              {(currentItem.videoUrl || currentItem.imageUrl?.includes('drive.google.com')) && (
+                <a
+                  href={currentItem.videoUrl || currentItem.imageUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600/20 hover:bg-blue-600 text-cyan-300 hover:text-white border border-blue-500/40 text-xs font-semibold transition-all shadow-md cursor-pointer"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>
+                    {media?.videoType === 'gdrive'
+                      ? 'Open in Google Drive'
+                      : media?.videoType === 'youtube'
+                      ? 'Watch on YouTube'
+                      : 'Open Video'}
                   </span>
-                ))}
-              </div>
-            )}
+                </a>
+              )}
+
+              {currentItem.tags && currentItem.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {currentItem.tags.map((t, idx) => (
+                    <span
+                      key={idx}
+                      className="px-2 py-0.5 rounded text-[11px] bg-slate-900 border border-slate-800 text-slate-400"
+                    >
+                      #{t}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </motion.div>
       </div>

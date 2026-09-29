@@ -15,6 +15,7 @@ import {
   Edit2,
   CheckCircle2,
   Eye,
+  EyeOff,
   ExternalLink,
   RotateCcw,
   Sparkles,
@@ -23,8 +24,18 @@ import {
   MessageSquare,
   Search,
   Check,
+  AlertTriangle,
+  Film,
+  Play,
+  ArrowUp,
+  ArrowDown,
+  ChevronLeft,
+  ChevronRight,
+  GripVertical,
+  ArrowUpDown,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { resolveGalleryMedia, extractGoogleDriveId } from '../utils/mediaUtils';
 
 export const AdminPage: React.FC = () => {
   const {
@@ -35,10 +46,14 @@ export const AdminPage: React.FC = () => {
     addProject,
     updateProject,
     deleteProject,
+    moveProject,
+    reorderProjects,
     galleryItems,
     addGalleryItem,
     updateGalleryItem,
     deleteGalleryItem,
+    moveGalleryItem,
+    reorderGalleryItems,
     timelineItems,
     addTimelineItem,
     updateTimelineItem,
@@ -46,6 +61,7 @@ export const AdminPage: React.FC = () => {
     contactSubmissions,
     markContactRead,
     deleteContactSubmission,
+    clearAllContactSubmissions,
     siteInfo,
     updateSiteInfo,
     skills,
@@ -61,6 +77,18 @@ export const AdminPage: React.FC = () => {
   // Authentication State
   const [passwordInput, setPasswordInput] = useState('');
   const [authError, setAuthError] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Drag and drop reordering states
+  const [draggedProjectIndex, setDraggedProjectIndex] = useState<number | null>(null);
+  const [draggedGalleryIndex, setDraggedGalleryIndex] = useState<number | null>(null);
+
+  // Deletion Confirmation Dialog State
+  const [deleteDialog, setDeleteDialog] = useState<{
+    title: string;
+    description: string;
+    onConfirm: () => void;
+  } | null>(null);
 
   // Active Admin Sub-tab
   const [adminTab, setAdminTab] = useState<
@@ -93,6 +121,7 @@ export const AdminPage: React.FC = () => {
     title: '',
     category: 'My Work',
     imageUrl: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=1000&q=80',
+    videoUrl: '',
     description: '',
     date: '2026',
     tags: ['Work', 'Web'],
@@ -176,6 +205,7 @@ export const AdminPage: React.FC = () => {
     if (editingGallery) {
       updateGalleryItem(editingGallery.id, galleryForm);
       setEditingGallery(null);
+      setIsAddingGallery(false);
     } else {
       addGalleryItem(galleryForm);
       setIsAddingGallery(false);
@@ -188,10 +218,12 @@ export const AdminPage: React.FC = () => {
       title: g.title,
       category: g.category,
       imageUrl: g.imageUrl,
+      videoUrl: g.videoUrl || '',
       description: g.description,
       date: g.date || '2026',
       tags: g.tags || [],
     });
+    setIsAddingGallery(true);
   };
 
   // ----------------------------------------------------
@@ -266,20 +298,35 @@ export const AdminPage: React.FC = () => {
                 <label className="block text-xs font-semibold text-slate-300 mb-1.5">
                   Administrator Passcode
                 </label>
-                <input
-                  type="password"
-                  required
-                  value={passwordInput}
-                  onChange={(e) => {
-                    setPasswordInput(e.target.value);
-                    setAuthError(false);
-                  }}
-                  placeholder="Enter passcode (e.g. admin123)"
-                  className="w-full px-4 py-2.5 rounded-xl bg-[#050811] border border-blue-900/50 text-white text-xs placeholder:text-slate-500 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400"
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    value={passwordInput}
+                    onChange={(e) => {
+                      setPasswordInput(e.target.value);
+                      setAuthError(false);
+                    }}
+                    placeholder="Enter administrator passcode"
+                    className="w-full pl-4 pr-11 py-2.5 rounded-xl bg-[#050811] border border-blue-900/50 text-white text-xs placeholder:text-slate-500 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-cyan-400 focus:outline-none transition-colors cursor-pointer"
+                    aria-label={showPassword ? 'Hide passcode' : 'Show passcode'}
+                    title={showPassword ? 'Hide passcode' : 'Show passcode'}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
                 {authError && (
                   <p className="text-[11px] text-rose-400 mt-1.5 font-medium">
-                    Invalid administrator passcode. Try "admin123" or "admin".
+                    Invalid administrator passcode. Please try again.
                   </p>
                 )}
               </div>
@@ -292,20 +339,6 @@ export const AdminPage: React.FC = () => {
                 <span>Authorize & Login</span>
               </button>
             </form>
-
-            {/* Quick Demo Helper */}
-            <div className="pt-3 border-t border-slate-800/80">
-              <div className="text-[11px] text-slate-400">
-                Demo Quick Access Passcode:{' '}
-                <button
-                  type="button"
-                  onClick={() => setPasswordInput('admin123')}
-                  className="text-cyan-400 hover:underline font-mono font-bold"
-                >
-                  admin123
-                </button>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -631,87 +664,161 @@ export const AdminPage: React.FC = () => {
           )}
 
           {/* Projects Table / List */}
-          <div className="rounded-2xl bg-[#080d1a] border border-blue-900/40 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-[#050811] text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800">
-                  <tr>
-                    <th className="p-4">Project</th>
-                    <th className="p-4">Category</th>
-                    <th className="p-4">Tech Stack</th>
-                    <th className="p-4">Featured</th>
-                    <th className="p-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60">
-                  {projects.map((p) => (
-                    <tr key={p.id} className="hover:bg-slate-900/40 transition-colors">
-                      <td className="p-4 flex items-center gap-3">
-                        <img
-                          src={p.imageUrl}
-                          alt={p.title}
-                          className="w-12 h-10 rounded-lg object-cover bg-slate-950 shrink-0"
-                          referrerPolicy="no-referrer"
-                        />
-                        <div>
-                          <div className="font-bold text-white text-sm">{p.title}</div>
-                          <div className="text-slate-400 line-clamp-1 text-[11px]">
-                            {p.description}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="p-4">
-                        <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold bg-blue-950 text-cyan-300 border border-blue-800/50">
-                          {p.category}
-                        </span>
-                      </td>
-                      <td className="p-4">
-                        <div className="flex flex-wrap gap-1">
-                          {p.technologies.slice(0, 3).map((t, idx) => (
-                            <span
-                              key={idx}
-                              className="px-1.5 py-0.5 rounded bg-slate-900 text-slate-300 text-[10px]"
-                            >
-                              {t}
-                            </span>
-                          ))}
-                        </div>
-                      </td>
-                      <td className="p-4">
-                        {p.featured ? (
-                          <span className="text-emerald-400 font-semibold flex items-center gap-1">
-                            <CheckCircle2 className="w-3.5 h-3.5" /> Yes
-                          </span>
-                        ) : (
-                          <span className="text-slate-500">No</span>
-                        )}
-                      </td>
-                      <td className="p-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => startEditProject(p)}
-                            className="p-1.5 rounded-lg bg-blue-600/20 text-cyan-300 hover:bg-blue-600 hover:text-white transition-colors"
-                            title="Edit"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => {
-                              if (confirm(`Delete project "${p.title}"?`)) {
-                                deleteProject(p.id);
-                              }
-                            }}
-                            className="p-1.5 rounded-lg bg-rose-600/20 text-rose-400 hover:bg-rose-600 hover:text-white transition-colors"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </td>
+          <div className="space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-blue-950/40 border border-blue-800/40 text-xs text-slate-300 shadow-md">
+              <div className="flex items-center gap-2.5">
+                <ArrowUpDown className="w-4 h-4 text-cyan-400 shrink-0" />
+                <span>
+                  <strong>Rearrange Projects:</strong> Use the <strong>Up (↑)</strong> and <strong>Down (↓)</strong> buttons or <strong>drag rows</strong> to adjust project order. Order updates instantly across the portfolio.
+                </span>
+              </div>
+              <span className="text-[11px] font-mono text-cyan-300 px-2.5 py-1 rounded-lg bg-blue-900/50 border border-blue-700/50 shrink-0 self-start sm:self-auto">
+                {projects.length} Total Projects
+              </span>
+            </div>
+
+            <div className="rounded-2xl bg-[#080d1a] border border-blue-900/40 overflow-hidden shadow-xl">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-[#050811] text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800">
+                    <tr>
+                      <th className="p-4 w-28 text-center">Position</th>
+                      <th className="p-4">Project</th>
+                      <th className="p-4">Category</th>
+                      <th className="p-4">Tech Stack</th>
+                      <th className="p-4">Featured</th>
+                      <th className="p-4 text-right">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60">
+                    {projects.map((p, idx) => (
+                      <tr
+                        key={p.id}
+                        draggable
+                        onDragStart={(e) => {
+                          setDraggedProjectIndex(idx);
+                          e.dataTransfer.setData('text/plain', String(idx));
+                          e.dataTransfer.effectAllowed = 'move';
+                        }}
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          e.dataTransfer.dropEffect = 'move';
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          if (draggedProjectIndex !== null && draggedProjectIndex !== idx) {
+                            reorderProjects(draggedProjectIndex, idx);
+                          }
+                          setDraggedProjectIndex(null);
+                        }}
+                        onDragEnd={() => setDraggedProjectIndex(null)}
+                        className={`hover:bg-slate-900/50 transition-colors ${
+                          draggedProjectIndex === idx ? 'opacity-40 bg-blue-900/20' : ''
+                        }`}
+                      >
+                        <td className="p-4">
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              type="button"
+                              className="cursor-grab active:cursor-grabbing text-slate-500 hover:text-cyan-400 transition-colors p-1"
+                              title="Drag to reorder project"
+                            >
+                              <GripVertical className="w-4 h-4" />
+                            </button>
+                            <span className="w-7 text-center font-mono font-bold text-xs px-1.5 py-0.5 rounded bg-slate-900 border border-slate-700 text-cyan-300 shadow-inner">
+                              #{idx + 1}
+                            </span>
+                            <div className="flex flex-col gap-0.5">
+                              <button
+                                type="button"
+                                onClick={() => moveProject(p.id, 'up')}
+                                disabled={idx === 0}
+                                title="Move project up (earlier)"
+                                className="p-1 rounded bg-slate-900 hover:bg-blue-600 text-slate-300 hover:text-white disabled:opacity-20 disabled:pointer-events-none transition-colors cursor-pointer"
+                              >
+                                <ArrowUp className="w-3 h-3" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => moveProject(p.id, 'down')}
+                                disabled={idx === projects.length - 1}
+                                title="Move project down (later)"
+                                className="p-1 rounded bg-slate-900 hover:bg-blue-600 text-slate-300 hover:text-white disabled:opacity-20 disabled:pointer-events-none transition-colors cursor-pointer"
+                              >
+                                <ArrowDown className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="p-4 flex items-center gap-3">
+                          <img
+                            src={p.imageUrl}
+                            alt={p.title}
+                            className="w-12 h-10 rounded-lg object-cover bg-slate-950 shrink-0 border border-blue-900/40"
+                            referrerPolicy="no-referrer"
+                          />
+                          <div>
+                            <div className="font-bold text-white text-sm">{p.title}</div>
+                            <div className="text-slate-400 line-clamp-1 text-[11px]">
+                              {p.description}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="p-4">
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold bg-blue-950 text-cyan-300 border border-blue-800/50">
+                            {p.category}
+                          </span>
+                        </td>
+                        <td className="p-4">
+                          <div className="flex flex-wrap gap-1">
+                            {p.technologies.slice(0, 3).map((t, tidx) => (
+                              <span
+                                key={tidx}
+                                className="px-1.5 py-0.5 rounded bg-slate-900 text-slate-300 text-[10px]"
+                              >
+                                {t}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="p-4">
+                          {p.featured ? (
+                            <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                              <CheckCircle2 className="w-3.5 h-3.5" /> Yes
+                            </span>
+                          ) : (
+                            <span className="text-slate-500">No</span>
+                          )}
+                        </td>
+                        <td className="p-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => startEditProject(p)}
+                              className="p-1.5 rounded-lg bg-blue-600/20 text-cyan-300 hover:bg-blue-600 hover:text-white transition-colors cursor-pointer"
+                              title="Edit"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                setDeleteDialog({
+                                  title: 'Delete Project',
+                                  description: `Are you sure you want to permanently delete project "${p.title}"?`,
+                                  onConfirm: () => deleteProject(p.id),
+                                });
+                              }}
+                              className="p-1.5 rounded-lg bg-rose-600/20 text-rose-400 hover:bg-rose-600 hover:text-white transition-colors cursor-pointer"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
@@ -806,17 +913,60 @@ export const AdminPage: React.FC = () => {
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Image URL *
+                    Video URL (Google Drive, YouTube, Vimeo, or .MP4)
+                  </label>
+                  <input
+                    type="url"
+                    value={galleryForm.videoUrl || ''}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const driveId = extractGoogleDriveId(val);
+                      setGalleryForm((prev) => ({
+                        ...prev,
+                        videoUrl: val,
+                        category: val.trim() ? 'Videos' : prev.category,
+                        imageUrl:
+                          driveId && (!prev.imageUrl || prev.imageUrl.includes('unsplash'))
+                            ? `https://drive.google.com/thumbnail?id=${driveId}&sz=w1000`
+                            : prev.imageUrl,
+                      }));
+                    }}
+                    placeholder="https://drive.google.com/file/d/... or YouTube / Vimeo / MP4"
+                    className="w-full px-3 py-2 rounded-xl bg-[#050811] border border-blue-900/50 text-white text-xs focus:outline-none focus:border-cyan-400 placeholder:text-slate-500"
+                  />
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Supports Google Drive sharing links, YouTube, Vimeo, or direct MP4 files. Will play seamlessly with interactive controls.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    Image / Poster URL *
                   </label>
                   <input
                     type="url"
                     required
                     value={galleryForm.imageUrl}
-                    onChange={(e) =>
-                      setGalleryForm({ ...galleryForm, imageUrl: e.target.value })
-                    }
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const driveId = extractGoogleDriveId(val);
+                      if (driveId) {
+                        setGalleryForm((prev) => ({
+                          ...prev,
+                          videoUrl: prev.videoUrl || val,
+                          category: 'Videos',
+                          imageUrl: `https://drive.google.com/thumbnail?id=${driveId}&sz=w1000`,
+                        }));
+                      } else {
+                        setGalleryForm((prev) => ({ ...prev, imageUrl: val }));
+                      }
+                    }}
+                    placeholder="https://..."
                     className="w-full px-3 py-2 rounded-xl bg-[#050811] border border-blue-900/50 text-white text-xs focus:outline-none focus:border-cyan-400"
                   />
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Cover image or poster frame. If pasting a Google Drive link, the video will be auto-detected.
+                  </p>
                 </div>
 
                 <div>
@@ -840,15 +990,15 @@ export const AdminPage: React.FC = () => {
                       setIsAddingGallery(false);
                       setEditingGallery(null);
                     }}
-                    className="px-4 py-2 rounded-xl bg-slate-900 text-slate-400 text-xs hover:text-white"
+                    className="px-4 py-2 rounded-xl bg-slate-900 text-slate-400 text-xs hover:text-white cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-6 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-bold text-xs shadow-md"
+                    className="px-6 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-bold text-xs shadow-md cursor-pointer hover:shadow-cyan-500/20 transition-all"
                   >
-                    Save Image
+                    {editingGallery ? 'Update Item' : 'Save Media Item'}
                   </button>
                 </div>
               </form>
@@ -856,49 +1006,145 @@ export const AdminPage: React.FC = () => {
           )}
 
           {/* Gallery Items Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {galleryItems.map((g) => (
-              <div
-                key={g.id}
-                className="p-3 rounded-xl bg-[#080d1a] border border-blue-900/30 space-y-2 group"
-              >
-                <div className="relative h-32 w-full rounded-lg overflow-hidden bg-slate-950">
-                  <img
-                    src={g.imageUrl}
-                    alt={g.title}
-                    className="w-full h-full object-cover"
-                    referrerPolicy="no-referrer"
-                  />
-                  <div className="absolute top-2 left-2 px-2 py-0.5 rounded text-[10px] font-bold bg-slate-900/90 text-cyan-300">
-                    {g.category}
-                  </div>
-                </div>
-
-                <div>
-                  <h4 className="font-bold text-white text-xs line-clamp-1">{g.title}</h4>
-                  <p className="text-[11px] text-slate-400 line-clamp-1">{g.description}</p>
-                </div>
-
-                <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
-                  <button
-                    onClick={() => startEditGallery(g)}
-                    className="p-1 rounded bg-blue-600/20 text-cyan-300 hover:bg-blue-600 hover:text-white text-xs"
-                    title="Edit"
-                  >
-                    <Edit2 className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (confirm(`Delete "${g.title}"?`)) deleteGalleryItem(g.id);
-                    }}
-                    className="p-1 rounded bg-rose-600/20 text-rose-400 hover:bg-rose-600 hover:text-white text-xs"
-                    title="Delete"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+          <div className="space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-blue-950/40 border border-blue-800/40 text-xs text-slate-300 shadow-md">
+              <div className="flex items-center gap-2.5">
+                <ArrowUpDown className="w-4 h-4 text-cyan-400 shrink-0" />
+                <span>
+                  <strong>Rearrange Gallery Artifacts:</strong> Click <strong>← (Move Earlier)</strong> or <strong>→ (Move Later)</strong>, or <strong>drag cards</strong> to change their visual placement.
+                </span>
               </div>
-            ))}
+              <span className="text-[11px] font-mono text-cyan-300 px-2.5 py-1 rounded-lg bg-blue-900/50 border border-blue-700/50 shrink-0 self-start sm:self-auto">
+                {galleryItems.length} Total Items
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {galleryItems.map((g, idx) => {
+                const media = resolveGalleryMedia(g);
+                return (
+                  <div
+                    key={g.id}
+                    draggable
+                    onDragStart={(e) => {
+                      setDraggedGalleryIndex(idx);
+                      e.dataTransfer.setData('text/plain', String(idx));
+                      e.dataTransfer.effectAllowed = 'move';
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = 'move';
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      if (draggedGalleryIndex !== null && draggedGalleryIndex !== idx) {
+                        reorderGalleryItems(draggedGalleryIndex, idx);
+                      }
+                      setDraggedGalleryIndex(null);
+                    }}
+                    onDragEnd={() => setDraggedGalleryIndex(null)}
+                    className={`p-3 rounded-xl bg-[#080d1a] border border-blue-900/30 hover:border-cyan-400/50 space-y-2.5 group transition-all relative ${
+                      draggedGalleryIndex === idx ? 'opacity-40 border-cyan-400' : ''
+                    }`}
+                  >
+                    <div className="relative h-32 w-full rounded-lg overflow-hidden bg-slate-950">
+                      <img
+                        src={media.posterUrl}
+                        alt={g.title}
+                        className="w-full h-full object-cover"
+                        referrerPolicy="no-referrer"
+                        onError={(e) => {
+                          const isTea = g.title.toLowerCase().includes('tea') || g.category === 'Videos';
+                          (e.target as HTMLImageElement).src = isTea
+                            ? 'https://images.unsplash.com/photo-1544787219-7f47ccb76574?auto=format&fit=crop&w=1000&q=80'
+                            : 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=1000&q=80';
+                        }}
+                      />
+                      <div className="absolute top-2 left-2 px-2 py-0.5 rounded text-[10px] font-bold bg-slate-900/90 text-cyan-300 flex items-center gap-1 shadow-md">
+                        {media.isVideo ? (
+                          <Film className="w-3 h-3 text-cyan-400" />
+                        ) : (
+                          <ImageIcon className="w-3 h-3 text-blue-400" />
+                        )}
+                        <span>{g.category}</span>
+                      </div>
+
+                      <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded font-mono text-[10px] font-bold bg-black/80 text-cyan-300 border border-blue-500/40 shadow-md">
+                        #{idx + 1}
+                      </div>
+
+                      {media.isVideo && (
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <div className="w-8 h-8 rounded-full bg-blue-600/80 text-white flex items-center justify-center shadow-lg">
+                            <Play className="w-4 h-4 ml-0.5 fill-white text-white" />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <h4 className="font-bold text-white text-xs line-clamp-1">{g.title}</h4>
+                      <p className="text-[11px] text-slate-400 line-clamp-1">{g.description}</p>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-1 pt-2 border-t border-slate-800">
+                      {/* Position swap buttons */}
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => moveGalleryItem(g.id, 'left')}
+                          disabled={idx === 0}
+                          className="p-1 rounded bg-slate-900 hover:bg-blue-600 text-slate-300 hover:text-white disabled:opacity-20 disabled:pointer-events-none transition-colors cursor-pointer"
+                          title="Move Earlier (Left)"
+                        >
+                          <ChevronLeft className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          className="cursor-grab active:cursor-grabbing text-slate-500 hover:text-cyan-400 transition-colors p-0.5"
+                          title="Drag card to reorder"
+                        >
+                          <GripVertical className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => moveGalleryItem(g.id, 'right')}
+                          disabled={idx === galleryItems.length - 1}
+                          className="p-1 rounded bg-slate-900 hover:bg-blue-600 text-slate-300 hover:text-white disabled:opacity-20 disabled:pointer-events-none transition-colors cursor-pointer"
+                          title="Move Later (Right)"
+                        >
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      {/* Edit & Delete actions */}
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => startEditGallery(g)}
+                          className="p-1 rounded bg-blue-600/20 text-cyan-300 hover:bg-blue-600 hover:text-white text-xs cursor-pointer transition-colors"
+                          title="Edit"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setDeleteDialog({
+                              title: 'Delete Media Item',
+                              description: `Are you sure you want to delete "${g.title}"?`,
+                              onConfirm: () => deleteGalleryItem(g.id),
+                            });
+                          }}
+                          className="p-1 rounded bg-rose-600/20 text-rose-400 hover:bg-rose-600 hover:text-white text-xs cursor-pointer transition-colors"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}
@@ -908,19 +1154,45 @@ export const AdminPage: React.FC = () => {
          ==================================== */}
       {adminTab === 'contacts' && (
         <div className="space-y-6">
-          <div>
-            <h2 className="text-xl font-bold text-white">Client Inquiry Submissions</h2>
-            <p className="text-xs text-slate-400">
-              Read customer requests, mark read/unread status, or open direct email/WhatsApp replies.
-            </p>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-bold text-white">Client Inquiry Submissions</h2>
+                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-600/20 text-cyan-300 border border-blue-500/30">
+                  {contactSubmissions.length}
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Read customer requests, mark read/unread status, delete inquiries, or reply directly.
+              </p>
+            </div>
+            {contactSubmissions.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setDeleteDialog({
+                    title: 'Clear All Inquiries',
+                    description: 'Are you sure you want to permanently delete all inquiries? This action cannot be undone.',
+                    onConfirm: () => {
+                      clearAllContactSubmissions();
+                      setSelectedSubmissionId(null);
+                    },
+                  });
+                }}
+                className="px-3.5 py-2 rounded-xl bg-rose-950/40 border border-rose-800/60 text-rose-300 hover:bg-rose-900/60 hover:text-rose-100 text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer self-start sm:self-auto"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Clear All Inquiries</span>
+              </button>
+            )}
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Submissions List */}
             <div className="lg:col-span-6 space-y-3">
               {contactSubmissions.length === 0 ? (
-                <div className="p-8 text-center rounded-2xl bg-[#080d1a] border border-blue-900/30 text-slate-400 text-xs">
-                  No submissions yet.
+                <div className="p-10 text-center rounded-2xl bg-[#080d1a] border border-blue-900/30 text-slate-400 text-xs">
+                  No inquiries found. All inquiries have been cleared or deleted.
                 </div>
               ) : (
                 contactSubmissions.map((sub) => (
@@ -945,9 +1217,31 @@ export const AdminPage: React.FC = () => {
                         )}
                         <span className="font-bold text-sm text-white">{sub.fullName}</span>
                       </div>
-                      <span className="text-[10px] text-slate-400">
-                        {new Date(sub.createdAt).toLocaleDateString()}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-slate-400">
+                          {new Date(sub.createdAt).toLocaleDateString()}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteDialog({
+                              title: 'Delete Inquiry',
+                              description: `Permanently delete the inquiry from "${sub.fullName}"?`,
+                              onConfirm: () => {
+                                deleteContactSubmission(sub.id);
+                                if (selectedSubmissionId === sub.id) {
+                                  setSelectedSubmissionId(null);
+                                }
+                              },
+                            });
+                          }}
+                          className="p-1.5 rounded-lg bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white transition-all cursor-pointer"
+                          title="Delete this inquiry"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
 
                     <div className="flex items-center gap-2 mt-1">
@@ -981,20 +1275,27 @@ export const AdminPage: React.FC = () => {
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => markContactRead(sub.id, !sub.read)}
-                            className="px-2.5 py-1 rounded-lg bg-slate-900 text-xs text-slate-300 border border-slate-700"
+                            className="px-2.5 py-1 rounded-lg bg-slate-900 text-xs text-slate-300 border border-slate-700 hover:bg-slate-800 transition-colors cursor-pointer"
                           >
                             {sub.read ? 'Mark Unread' : 'Mark Read'}
                           </button>
                           <button
+                            type="button"
                             onClick={() => {
-                              if (confirm('Delete message?')) {
-                                deleteContactSubmission(sub.id);
-                                setSelectedSubmissionId(null);
-                              }
+                              setDeleteDialog({
+                                title: 'Delete Inquiry',
+                                description: `Permanently delete the inquiry from "${sub.fullName}"?`,
+                                onConfirm: () => {
+                                  deleteContactSubmission(sub.id);
+                                  setSelectedSubmissionId(null);
+                                },
+                              });
                             }}
-                            className="p-1.5 rounded-lg bg-rose-600/20 text-rose-400 hover:bg-rose-600 hover:text-white"
+                            className="px-2.5 py-1 rounded-lg bg-rose-600/20 text-rose-400 hover:bg-rose-600 hover:text-white flex items-center gap-1.5 text-xs font-semibold transition-all cursor-pointer"
+                            title="Delete message"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Delete</span>
                           </button>
                         </div>
                       </div>
@@ -1214,9 +1515,13 @@ export const AdminPage: React.FC = () => {
                   </button>
                   <button
                     onClick={() => {
-                      if (confirm(`Delete milestone "${t.title}"?`)) deleteTimelineItem(t.id);
+                      setDeleteDialog({
+                        title: 'Delete Milestone',
+                        description: `Are you sure you want to delete milestone "${t.title}"?`,
+                        onConfirm: () => deleteTimelineItem(t.id),
+                      });
                     }}
-                    className="p-1.5 rounded-lg bg-rose-600/20 text-rose-400 hover:bg-rose-600 hover:text-white"
+                    className="p-1.5 rounded-lg bg-rose-600/20 text-rose-400 hover:bg-rose-600 hover:text-white cursor-pointer transition-colors"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -1283,6 +1588,46 @@ export const AdminPage: React.FC = () => {
                     value={aboutForm.whatsapp}
                     onChange={(e) => setAboutForm({ ...aboutForm, whatsapp: e.target.value })}
                     className="w-full px-3 py-2 rounded-xl bg-[#050811] border border-blue-900/50 text-white text-xs"
+                  />
+                </div>
+              </div>
+
+              {/* Counter Statistics */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 rounded-xl bg-[#050811]/70 border border-blue-900/30">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">Websites Created</label>
+                  <input
+                    type="text"
+                    value={aboutForm.websitesCreated || '10+'}
+                    onChange={(e) => setAboutForm({ ...aboutForm, websitesCreated: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-[#080d1a] border border-blue-900/50 text-white text-xs font-mono font-bold focus:border-cyan-400 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">Projects Completed</label>
+                  <input
+                    type="text"
+                    value={aboutForm.projectsCompleted || '10+'}
+                    onChange={(e) => setAboutForm({ ...aboutForm, projectsCompleted: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-[#080d1a] border border-blue-900/50 text-white text-xs font-mono font-bold focus:border-cyan-400 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">Happy Clients</label>
+                  <input
+                    type="text"
+                    value={aboutForm.happyClients || '10+'}
+                    onChange={(e) => setAboutForm({ ...aboutForm, happyClients: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-[#080d1a] border border-blue-900/50 text-white text-xs font-mono font-bold focus:border-cyan-400 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">Experience Years</label>
+                  <input
+                    type="text"
+                    value={aboutForm.experienceYears || '2+'}
+                    onChange={(e) => setAboutForm({ ...aboutForm, experienceYears: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-[#080d1a] border border-blue-900/50 text-white text-xs font-mono font-bold focus:border-cyan-400 focus:outline-none"
                   />
                 </div>
               </div>
@@ -1388,6 +1733,52 @@ export const AdminPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Universal In-App Deletion Confirmation Modal (Reliable in iFrame) */}
+      <AnimatePresence>
+        {deleteDialog && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="w-full max-w-md bg-[#0a0f1d] border border-rose-900/60 rounded-2xl p-6 shadow-2xl space-y-4"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 flex items-center justify-center shrink-0">
+                  <Trash2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">{deleteDialog.title}</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">{deleteDialog.description}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800/80">
+                <button
+                  type="button"
+                  onClick={() => setDeleteDialog(null)}
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const action = deleteDialog.onConfirm;
+                    setDeleteDialog(null);
+                    action();
+                  }}
+                  className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-lg shadow-rose-600/30 transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Permanently Delete</span>
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

@@ -6,7 +6,8 @@
 - **Primary Roles**: Web Developer | Video Creator | Digital Creator
 - **Email**: maraapna8@gmail.com
 - **Direct Inquiry**: maraapna8@gmail.com
-- **WhatsApp Support**: Available via interactive portfolio button
+- **Phone**: +92 343 0277466
+- **WhatsApp**: +92 343 0277466 (Available via interactive portfolio button)
 - **Location**: Multan, Pakistan (Serving clients worldwide)
 - **Status**: Available for Freelance, Full-time Remote, & Contract Work
 - **Track Record**: 25+ Completed Projects, 25+ Deployed Websites, 23+ Satisfied Clients, 2+ Years Experience
@@ -18,6 +19,7 @@
 - **Performance & SEO**: Modern Core Web Vitals, Structured Data (JSON-LD), XML Sitemaps, Robots Directives, LLMs.txt integration
 
 ## Featured Live Deployments
+- [Personal Portfolio](https://abdullah-azam.netlify.app/): Developer portfolio showcasing skills, projects, dynamic CMS admin, and client reviews.
 - [SK Tea Company](https://sk-tea-company.netlify.app/): Artisanal e-commerce presentation platform engineered with React, Tailwind CSS, TypeScript, and Framer Motion.
 - [AI Nexoraa](https://ai-nexoraa.netlify.app/): Futuristic AI-powered digital platform integrating Google Gemini AI and responsive streaming UI.
 - [Dr. Abdullah Medical Clinic](https://dr-abdullah-clinic.netlify.app/): Healthcare appointment booking and patient portal.
