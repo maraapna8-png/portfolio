@@ -13,10 +13,11 @@ import { ProjectModal } from './components/ProjectModal';
 import { GalleryLightbox } from './components/GalleryLightbox';
 import { HireMeModal } from './components/HireMeModal';
 import { Toast } from './components/Toast';
+import { WelcomeSplash } from './components/WelcomeSplash';
 import { motion, AnimatePresence } from 'motion/react';
 
 const PortfolioContent: React.FC = () => {
-  const { activePage } = usePortfolio();
+  const { activePage, showSplash, setShowSplash } = usePortfolio();
 
   const renderPage = () => {
     switch (activePage) {
@@ -71,6 +72,13 @@ const PortfolioContent: React.FC = () => {
       <GalleryLightbox />
       <HireMeModal />
       <Toast />
+
+      {/* Intro Welcome Splash Screen with Brand Logo */}
+      <AnimatePresence>
+        {showSplash && (
+          <WelcomeSplash onEnter={() => setShowSplash(false)} />
+        )}
+      </AnimatePresence>
     </div>
   );
 };

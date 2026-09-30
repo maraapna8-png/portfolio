@@ -4,7 +4,7 @@ import { PageTab } from '../types';
 import { Mail, Phone, MessageSquare, ArrowUpRight, Shield } from 'lucide-react';
 
 export const Footer: React.FC = () => {
-  const { setActivePage, siteInfo } = usePortfolio();
+  const { setActivePage, siteInfo, setShowSplash } = usePortfolio();
 
   const handleNav = (tab: PageTab) => {
     setActivePage(tab);
@@ -21,11 +21,14 @@ export const Footer: React.FC = () => {
           {/* Brand Column */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-cyan-500 p-[1.5px] shadow-md shadow-blue-500/20">
-                <div className="w-full h-full bg-[#070b14] rounded-[9px] flex items-center justify-center">
-                  <span className="font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300 text-sm font-['JetBrains_Mono',monospace]">
-                    MA
-                  </span>
+              <div className="flex items-center justify-center w-11 h-11 rounded-full p-[1.5px] bg-gradient-to-tr from-cyan-400 via-blue-500 to-indigo-600 shadow-md shadow-cyan-500/20">
+                <div className="w-full h-full rounded-full overflow-hidden bg-[#070b14]">
+                  <img
+                    src="/assets/logo.png"
+                    alt="M Abdullah Azam Logo"
+                    className="w-full h-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
                 </div>
               </div>
               <span className="text-xl font-bold tracking-tight text-white">
@@ -111,6 +114,19 @@ export const Footer: React.FC = () => {
                 >
                   <span className="text-blue-500 group-hover:translate-x-0.5 transition-transform">›</span>
                   Contact
+                </button>
+              </li>
+              <li>
+                <button
+                  id="footer-link-replay-intro"
+                  onClick={() => {
+                    setShowSplash(true);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className="hover:text-cyan-400 transition-colors flex items-center gap-1.5 group text-cyan-300/90 font-medium"
+                >
+                  <span className="text-cyan-400 group-hover:translate-x-0.5 transition-transform">✦</span>
+                  Replay Intro Screen
                 </button>
               </li>
             </ul>

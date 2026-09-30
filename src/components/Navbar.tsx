@@ -5,7 +5,7 @@ import { Menu, X, Sparkles, Shield, Send } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 export const Navbar: React.FC = () => {
-  const { activePage, setActivePage, openHireMe, siteInfo } = usePortfolio();
+  const { activePage, setActivePage, openHireMe, siteInfo, setShowSplash } = usePortfolio();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navLinks: { id: PageTab; label: string; icon?: React.ReactNode }[] = [
@@ -32,13 +32,16 @@ export const Navbar: React.FC = () => {
           onClick={() => handleNavClick('home')}
           className="flex items-center gap-3 group text-left transition-transform duration-200 active:scale-95"
         >
-          <div className="relative flex items-center justify-center w-11 h-11 rounded-xl bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-600 p-[1.5px] shadow-lg shadow-blue-500/20 group-hover:shadow-blue-500/40 transition-all duration-300">
-            <div className="w-full h-full bg-[#070b14] rounded-[10px] flex items-center justify-center">
-              <span className="font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan-300 to-indigo-300 tracking-wider text-lg font-['JetBrains_Mono',monospace]">
-                MA
-              </span>
+          <div className="relative flex items-center justify-center w-11 h-11 rounded-full p-[1.5px] bg-gradient-to-tr from-cyan-400 via-blue-500 to-indigo-600 shadow-lg shadow-cyan-500/25 group-hover:shadow-cyan-400/50 transition-all duration-300">
+            <div className="w-full h-full rounded-full overflow-hidden bg-[#070b14]">
+              <img
+                src="/assets/logo.png"
+                alt="M Abdullah Azam Logo"
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                referrerPolicy="no-referrer"
+              />
             </div>
-            <div className="absolute -inset-0.5 bg-blue-500 rounded-xl blur opacity-30 group-hover:opacity-60 transition duration-300 -z-10" />
+            <div className="absolute -inset-0.5 bg-cyan-400 rounded-full blur opacity-25 group-hover:opacity-50 transition duration-300 -z-10" />
           </div>
 
           <div className="flex flex-col">
@@ -79,8 +82,17 @@ export const Navbar: React.FC = () => {
           })}
         </nav>
 
-        {/* Right Action: Hire Me Button */}
+        {/* Right Action: Hire Me & Intro Button */}
         <div className="hidden lg:flex items-center gap-3">
+          <button
+            onClick={() => setShowSplash(true)}
+            className="px-3 py-2 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-slate-400 hover:text-cyan-300 border border-blue-900/40 hover:border-cyan-500/40 transition-all text-xs flex items-center gap-1.5 cursor-pointer shadow-sm"
+            title="Replay Welcome Intro"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="text-[11px] font-medium">Intro</span>
+          </button>
+
           <button
             id="nav-hire-me-btn"
             onClick={openHireMe}

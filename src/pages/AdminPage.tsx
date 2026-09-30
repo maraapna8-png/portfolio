@@ -280,8 +280,15 @@ export const AdminPage: React.FC = () => {
       <div className="max-w-md mx-auto px-4 py-16 sm:py-24">
         <div className="relative rounded-2xl p-[1px] bg-gradient-to-b from-blue-500/50 via-cyan-400/30 to-purple-600/50 shadow-2xl shadow-blue-950/90">
           <div className="rounded-2xl bg-[#080d1a] p-8 border border-blue-900/40 text-center space-y-6">
-            <div className="w-14 h-14 rounded-2xl bg-blue-600/20 border border-blue-500/40 text-cyan-300 flex items-center justify-center mx-auto shadow-lg shadow-blue-500/20">
-              <Lock className="w-7 h-7" />
+            <div className="w-16 h-16 rounded-full p-[2px] bg-gradient-to-tr from-cyan-400 via-blue-500 to-indigo-600 mx-auto shadow-xl shadow-cyan-500/30">
+              <div className="w-full h-full rounded-full overflow-hidden bg-[#080d1a]">
+                <img
+                  src="/assets/logo.png"
+                  alt="M Abdullah Azam Logo"
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              </div>
             </div>
 
             <div className="space-y-1">
@@ -352,8 +359,13 @@ export const AdminPage: React.FC = () => {
       {/* Top Admin Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-[#080d1a] border border-blue-900/40 shadow-xl">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-600/20 border border-blue-500/40 text-cyan-300 flex items-center justify-center">
-            <Shield className="w-5 h-5" />
+          <div className="w-11 h-11 rounded-full p-[1.5px] bg-gradient-to-tr from-cyan-400 via-blue-500 to-indigo-600 shadow-md">
+            <img
+              src="/assets/logo.png"
+              alt="M Abdullah Azam Logo"
+              className="w-full h-full object-cover rounded-full"
+              referrerPolicy="no-referrer"
+            />
           </div>
           <div>
             <h1 className="text-xl font-bold text-white tracking-tight">

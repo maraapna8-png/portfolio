@@ -69,6 +69,8 @@ interface PortfolioContextType {
   toastMessage: string | null;
   showToast: (msg: string) => void;
   resetAllToDefault: () => void;
+  showSplash: boolean;
+  setShowSplash: (show: boolean) => void;
 }
 
 const PortfolioContext = createContext<PortfolioContextType | undefined>(undefined);
@@ -283,6 +285,7 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
   const [selectedGalleryIndex, setSelectedGalleryIndex] = useState<number | null>(null);
   const [isHireMeOpen, setIsHireMeOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [showSplash, setShowSplash] = useState<boolean>(true);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -661,6 +664,8 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
         toastMessage,
         showToast,
         resetAllToDefault,
+        showSplash,
+        setShowSplash,
       }}
     >
       {children}
