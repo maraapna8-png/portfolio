@@ -116,19 +116,6 @@ export const Footer: React.FC = () => {
                   Contact
                 </button>
               </li>
-              <li>
-                <button
-                  id="footer-link-replay-intro"
-                  onClick={() => {
-                    setShowSplash(true);
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
-                  className="hover:text-cyan-400 transition-colors flex items-center gap-1.5 group text-cyan-300/90 font-medium"
-                >
-                  <span className="text-cyan-400 group-hover:translate-x-0.5 transition-transform">✦</span>
-                  Replay Intro Screen
-                </button>
-              </li>
             </ul>
           </div>
 

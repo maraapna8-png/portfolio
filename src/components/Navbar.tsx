@@ -82,17 +82,8 @@ export const Navbar: React.FC = () => {
           })}
         </nav>
 
-        {/* Right Action: Hire Me & Intro Button */}
+        {/* Right Action: Hire Me Button */}
         <div className="hidden lg:flex items-center gap-3">
-          <button
-            onClick={() => setShowSplash(true)}
-            className="px-3 py-2 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-slate-400 hover:text-cyan-300 border border-blue-900/40 hover:border-cyan-500/40 transition-all text-xs flex items-center gap-1.5 cursor-pointer shadow-sm"
-            title="Replay Welcome Intro"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-            <span className="text-[11px] font-medium">Intro</span>
-          </button>
-
           <button
             id="nav-hire-me-btn"
             onClick={openHireMe}
