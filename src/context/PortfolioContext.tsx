@@ -89,14 +89,14 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
       const saved = localStorage.getItem('portfolio_site_info');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed.websitesCreated === '12+' || parsed.websitesCreated === '25+' || !parsed.websitesCreated) {
-          parsed.websitesCreated = '10+';
+        if (parsed.websitesCreated === '10+' || parsed.websitesCreated === '12+' || parsed.websitesCreated === '25+' || !parsed.websitesCreated) {
+          parsed.websitesCreated = '20+';
         }
-        if (parsed.projectsCompleted === '25+' || !parsed.projectsCompleted) {
-          parsed.projectsCompleted = '10+';
+        if (parsed.projectsCompleted === '10+' || parsed.projectsCompleted === '25+' || !parsed.projectsCompleted) {
+          parsed.projectsCompleted = '20+';
         }
-        if (parsed.happyClients === '23+' || !parsed.happyClients) {
-          parsed.happyClients = '10+';
+        if (parsed.happyClients === '10+' || parsed.happyClients === '23+' || !parsed.happyClients) {
+          parsed.happyClients = '20+';
         }
         if (parsed.email === 'contact@mabdullahazam.dev') {
           parsed.email = 'maraapna8@gmail.com';

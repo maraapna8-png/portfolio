@@ -1610,7 +1610,7 @@ export const AdminPage: React.FC = () => {
                   <label className="block text-xs font-semibold text-slate-300 mb-1">Websites Created</label>
                   <input
                     type="text"
-                    value={aboutForm.websitesCreated || '10+'}
+                    value={aboutForm.websitesCreated || '20+'}
                     onChange={(e) => setAboutForm({ ...aboutForm, websitesCreated: e.target.value })}
                     className="w-full px-3 py-2 rounded-xl bg-[#080d1a] border border-blue-900/50 text-white text-xs font-mono font-bold focus:border-cyan-400 focus:outline-none"
                   />
@@ -1619,7 +1619,7 @@ export const AdminPage: React.FC = () => {
                   <label className="block text-xs font-semibold text-slate-300 mb-1">Projects Completed</label>
                   <input
                     type="text"
-                    value={aboutForm.projectsCompleted || '10+'}
+                    value={aboutForm.projectsCompleted || '20+'}
                     onChange={(e) => setAboutForm({ ...aboutForm, projectsCompleted: e.target.value })}
                     className="w-full px-3 py-2 rounded-xl bg-[#080d1a] border border-blue-900/50 text-white text-xs font-mono font-bold focus:border-cyan-400 focus:outline-none"
                   />
@@ -1628,7 +1628,7 @@ export const AdminPage: React.FC = () => {
                   <label className="block text-xs font-semibold text-slate-300 mb-1">Happy Clients</label>
                   <input
                     type="text"
-                    value={aboutForm.happyClients || '10+'}
+                    value={aboutForm.happyClients || '20+'}
                     onChange={(e) => setAboutForm({ ...aboutForm, happyClients: e.target.value })}
                     className="w-full px-3 py-2 rounded-xl bg-[#080d1a] border border-blue-900/50 text-white text-xs font-mono font-bold focus:border-cyan-400 focus:outline-none"
                   />

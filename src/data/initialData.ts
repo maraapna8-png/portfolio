@@ -9,9 +9,9 @@ export const initialSiteInfo: SiteInfo = {
   bio:
     "I specialize in architecting performant, visually striking, and responsive web applications. With a dual passion for frontend engineering and digital storytelling, I bridge modern technical execution with captivating visuals.",
   experienceYears: '2+',
-  websitesCreated: '10+',
-  projectsCompleted: '10+',
-  happyClients: '10+',
+  websitesCreated: '20+',
+  projectsCompleted: '20+',
+  happyClients: '20+',
   email: 'maraapna8@gmail.com',
   phone: '+92 343 0277466',
   whatsapp: '+92 343 0277466',

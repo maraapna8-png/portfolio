@@ -8,7 +8,7 @@ export const StatsSection: React.FC = () => {
 
   const stats = [
     {
-      value: siteInfo.websitesCreated || '10+',
+      value: siteInfo.websitesCreated || '20+',
       label: 'Websites Created',
       description: 'Production-ready web solutions',
       icon: Globe,
@@ -17,7 +17,7 @@ export const StatsSection: React.FC = () => {
       glowColor: 'group-hover:shadow-blue-500/20',
     },
     {
-      value: siteInfo.projectsCompleted || '10+',
+      value: siteInfo.projectsCompleted || '20+',
       label: 'Projects Completed',
       description: 'Web & digital media deliveries',
       icon: FolderGit2,
@@ -26,7 +26,7 @@ export const StatsSection: React.FC = () => {
       glowColor: 'group-hover:shadow-cyan-500/20',
     },
     {
-      value: siteInfo.happyClients || '10+',
+      value: siteInfo.happyClients || '20+',
       label: 'Happy Clients',
       description: 'Businesses & content creators',
       icon: Users,
