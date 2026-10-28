@@ -340,29 +340,4 @@ export const initialTimeline: TimelineItem[] = [
   },
 ];
 
-export const initialContactSubmissions: ContactSubmission[] = [
-  {
-    id: 'sub-1',
-    fullName: 'Hamza Malik',
-    email: 'hamza.malik@example.com',
-    phone: '+92 321 9876543',
-    serviceRequired: 'Business Websites',
-    projectBudget: '$500 - $1,000',
-    projectDetails: 'We need a high-converting landing page for our boutique consulting agency in Islamabad.',
-    message: 'Hello Abdullah! I saw your SK Tea Company project and love the sleek dark aesthetic. We would love to discuss a timeline for building our new website.',
-    createdAt: '2026-03-01T14:30:00Z',
-    read: false,
-  },
-  {
-    id: 'sub-2',
-    fullName: 'Sophia Davis',
-    email: 'sophia.d@innovatestudio.com',
-    phone: '+1 415 555 0199',
-    serviceRequired: 'AI-Powered Websites',
-    projectBudget: '$1,000 - $3,000',
-    projectDetails: 'AI-driven content dashboard with prompt chaining and PDF exports.',
-    message: 'Hi M Abdullah, we are looking for a frontend developer proficient in React and modern UI design to build our SaaS interface.',
-    createdAt: '2026-02-28T09:15:00Z',
-    read: true,
-  },
-];
+export const initialContactSubmissions: ContactSubmission[] = [];

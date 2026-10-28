@@ -1237,16 +1237,10 @@ export const AdminPage: React.FC = () => {
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setDeleteDialog({
-                              title: 'Delete Inquiry',
-                              description: `Permanently delete the inquiry from "${sub.fullName}"?`,
-                              onConfirm: () => {
-                                deleteContactSubmission(sub.id);
-                                if (selectedSubmissionId === sub.id) {
-                                  setSelectedSubmissionId(null);
-                                }
-                              },
-                            });
+                            deleteContactSubmission(sub.id);
+                            if (selectedSubmissionId === sub.id) {
+                              setSelectedSubmissionId(null);
+                            }
                           }}
                           className="p-1.5 rounded-lg bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white transition-all cursor-pointer"
                           title="Delete this inquiry"
@@ -1294,14 +1288,8 @@ export const AdminPage: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => {
-                              setDeleteDialog({
-                                title: 'Delete Inquiry',
-                                description: `Permanently delete the inquiry from "${sub.fullName}"?`,
-                                onConfirm: () => {
-                                  deleteContactSubmission(sub.id);
-                                  setSelectedSubmissionId(null);
-                                },
-                              });
+                              deleteContactSubmission(sub.id);
+                              setSelectedSubmissionId(null);
                             }}
                             className="px-2.5 py-1 rounded-lg bg-rose-600/20 text-rose-400 hover:bg-rose-600 hover:text-white flex items-center gap-1.5 text-xs font-semibold transition-all cursor-pointer"
                             title="Delete message"

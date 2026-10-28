@@ -267,7 +267,26 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
   const [contactSubmissions, setContactSubmissions] = useState<ContactSubmission[]>(() => {
     try {
       const saved = localStorage.getItem('portfolio_contacts');
-      return saved ? JSON.parse(saved) : initialContactSubmissions;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          // Permanently purge demo inquiries (Hamza Malik and Sophia Davis)
+          const cleaned = parsed.filter(
+            (c: any) =>
+              c.id !== 'sub-1' &&
+              c.id !== 'sub-2' &&
+              c.fullName !== 'Hamza Malik' &&
+              c.fullName !== 'Sophia Davis'
+          );
+          try {
+            localStorage.setItem('portfolio_contacts', JSON.stringify(cleaned));
+          } catch {
+            // ignore
+          }
+          return cleaned;
+        }
+      }
+      return initialContactSubmissions;
     } catch {
       return initialContactSubmissions;
     }
@@ -610,6 +629,11 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
     setGalleryItems(initialGalleryItems);
     setTimelineItems(initialTimeline);
     setContactSubmissions(initialContactSubmissions);
+    try {
+      localStorage.setItem('portfolio_contacts', JSON.stringify([]));
+    } catch {
+      // ignore
+    }
     showToast('All portfolio data reset to showcase defaults');
   };
 
