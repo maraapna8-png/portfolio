@@ -55,8 +55,15 @@ function clearFailedAttempts(ip: string): void {
 }
 
 function getEnvPasscode(): string | null {
-  const raw = process.env.ADMIN_PASSCODE?.trim();
-  return raw && raw.length > 0 ? raw : null;
+  let raw = process.env.ADMIN_PASSCODE?.trim();
+  if (!raw) return null;
+  if (
+    (raw.startsWith('"') && raw.endsWith('"') && raw.length >= 2) ||
+    (raw.startsWith("'") && raw.endsWith("'") && raw.length >= 2)
+  ) {
+    raw = raw.slice(1, -1).trim();
+  }
+  return raw.length > 0 ? raw : null;
 }
 
 function readClaimedCredential(): StoredCredential | null {
@@ -129,7 +136,7 @@ function timingSafeCompareStrings(a: string, b: string): boolean {
 async function startServer() {
   const app = express();
   app.set('trust proxy', 1);
-  app.use(express.json({ limit: '16kb' }));
+  app.use(express.json({ limit: '16kb', type: ['application/json', 'text/plain'] }));
 
   app.use('/api/admin', (_req, res, next) => {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');

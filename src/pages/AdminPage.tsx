@@ -87,6 +87,7 @@ export const AdminPage: React.FC = () => {
   } = usePortfolio();
 
   // Authentication State
+  const passcodeInputRef = React.useRef<HTMLInputElement | null>(null);
   const [passwordInput, setPasswordInput] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
@@ -168,7 +169,8 @@ export const AdminPage: React.FC = () => {
   // Passcode Authentication Handler (Server-verified)
   const handlePasscodeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const cleanPasscode = passwordInput.trim();
+    const rawValue = passwordInput || passcodeInputRef.current?.value || '';
+    const cleanPasscode = rawValue.trim();
     if (!cleanPasscode) return;
     setAuthError(null);
     setIsSigningIn(true);
@@ -352,11 +354,11 @@ export const AdminPage: React.FC = () => {
               </p>
             </div>
 
-            {isAdminBackendAvailable === false && (
+            {isAdminBackendAvailable === false && authError && (
               <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-left text-[11px] text-amber-200 leading-relaxed flex items-start gap-2">
                 <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                 <span>
-                  This live URL is not reaching the backend auth server yet. Please republish/update your Shared App in AI Studio and ensure <code className="text-amber-100">ADMIN_PASSCODE</code> is set in Secrets.
+                  This live URL is serving without an active backend server (<code className="text-amber-100">/api/admin</code>). Republish the Shared App in AI Studio with <code className="text-amber-100">ADMIN_PASSCODE</code> set in Secrets.
                 </span>
               </div>
             )}
@@ -369,6 +371,7 @@ export const AdminPage: React.FC = () => {
                 <div className="relative">
                   <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <input
+                    ref={passcodeInputRef}
                     type={showPassword ? 'text' : 'password'}
                     required
                     autoFocus

@@ -570,7 +570,7 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
     if (isAdminAuthenticated) return;
     let active = true;
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 5000);
+    const timer = setTimeout(() => controller.abort(), 15000);
 
     const checkStatus = async () => {
       try {
