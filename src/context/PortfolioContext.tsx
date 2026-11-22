@@ -352,21 +352,22 @@ const readLocalProjects = (): Project[] => {
       const parsed: Project[] = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) {
         return parsed.map((p) => {
-          if (p.id === 'proj-1' || p.title.toLowerCase().includes('sk tea') || p.imageUrl?.includes('1576092768241')) {
+          const titleLower = (p?.title || '').toLowerCase();
+          if (p.id === 'proj-1' || titleLower.includes('sk tea') || p.imageUrl?.includes('1576092768241')) {
             return {
               ...p,
               imageUrl: '/assets/sk_tea_company.jpg',
               liveUrl: p.liveUrl || 'https://sk-tea-company.netlify.app/',
             };
           }
-          if (p.id === 'proj-3' || p.title.toLowerCase().includes('nexora') || p.imageUrl?.includes('1618005182384')) {
+          if (p.id === 'proj-3' || titleLower.includes('nexora') || p.imageUrl?.includes('1618005182384')) {
             return {
               ...p,
               imageUrl: '/assets/nexora_logo.jpg',
               liveUrl: p.liveUrl || 'https://ai-nexoraa.netlify.app/',
             };
           }
-          if (p.id === 'proj-4' || p.title.toLowerCase().includes('personal portfolio')) {
+          if (p.id === 'proj-4' || titleLower.includes('personal portfolio')) {
             return {
               ...p,
               liveUrl: p.liveUrl || 'https://abdullah-azam.netlify.app/',
@@ -389,13 +390,14 @@ const readLocalGallery = (): GalleryItem[] => {
       const parsed: GalleryItem[] = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) {
         let list = parsed.map((g) => {
-          if (g.id === 'gal-2' || g.title.toLowerCase().includes('sk tea') || g.imageUrl?.includes('1576092768241')) {
+          const titleLower = (g?.title || '').toLowerCase();
+          if (g.id === 'gal-2' || titleLower.includes('sk tea') || g.imageUrl?.includes('1576092768241')) {
             return { ...g, imageUrl: '/assets/sk_tea_company.jpg' };
           }
-          if (g.id === 'gal-6' || g.title.toLowerCase().includes('nexora') || g.imageUrl?.includes('1618005182384')) {
+          if (g.id === 'gal-6' || titleLower.includes('nexora') || g.imageUrl?.includes('1618005182384')) {
             return { ...g, imageUrl: '/assets/nexora_logo.jpg' };
           }
-          if (g.id === 'gal-4' || g.title.toLowerCase().includes('promo video') || g.imageUrl?.includes('1536240478700')) {
+          if (g.id === 'gal-4' || titleLower.includes('promo video') || g.imageUrl?.includes('1536240478700')) {
             return {
               ...g,
               imageUrl: '/assets/nexora_promo_thumb.jpg',
@@ -403,7 +405,7 @@ const readLocalGallery = (): GalleryItem[] => {
               description: '4K Nexora brand promo commercial with holographic UI motion design, sound design, and color grading.',
             };
           }
-          if (g.id === 'gal-3' || g.title.toLowerCase().includes('doctor portal')) {
+          if (g.id === 'gal-3' || titleLower.includes('doctor portal')) {
             return {
               ...g,
               title: 'Doctor Portal & Clinic Website',
@@ -413,7 +415,7 @@ const readLocalGallery = (): GalleryItem[] => {
             };
           }
           if (
-            g.title.toLowerCase().includes('tea promotional video') ||
+            titleLower.includes('tea promotional video') ||
             g.imageUrl?.includes('drive.google.com') ||
             g.videoUrl?.includes('drive.google.com') ||
             g.imageUrl?.includes('1c1y3DN') ||
@@ -438,7 +440,7 @@ const readLocalGallery = (): GalleryItem[] => {
 
         const hasTeaPromo = list.some(
           (g) =>
-            g.title.toLowerCase().includes('tea promotional video') ||
+            (g?.title || '').toLowerCase().includes('tea promotional video') ||
             g.videoUrl?.includes('1c1y3DN_7hynbpY09') ||
             g.id === 'gal-tea-promo'
         );
@@ -561,8 +563,9 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
     }
   }, []);
 
-  // 1. Check Server Admin Auth Mode (/api/admin/status)
+  // 1. Check Server Admin Auth Mode (/api/admin/status) on mount & when opening Admin tab
   useEffect(() => {
+    if (isAdminAuthenticated) return;
     let active = true;
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 5000);
@@ -593,7 +596,7 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
       clearTimeout(timer);
       controller.abort();
     };
-  }, []);
+  }, [activePage, isAdminAuthenticated]);
 
   // 2. Firebase Auth State Listener (for Cloud Sync privilege)
   useEffect(() => {
@@ -1625,7 +1628,7 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
       if (!data) {
         return {
           ok: false,
-          error: `Authentication service unavailable (HTTP ${res.status}).`,
+          error: `Admin server endpoint did not return JSON (HTTP ${res.status}). If using the live/shared page, please republish the app so the backend server updates.`,
         };
       }
       if (!res.ok || !data.token) {
@@ -1659,7 +1662,7 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
       if (!data) {
         return {
           ok: false,
-          error: `Authentication service unavailable (HTTP ${res.status}).`,
+          error: `Admin server endpoint did not return JSON (HTTP ${res.status}). If using the live/shared page, please republish the app so the backend server updates.`,
         };
       }
       if (res.status === 403) {

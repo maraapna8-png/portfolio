@@ -258,7 +258,12 @@ async function startServer() {
     res.status(404).json({ error: 'API endpoint not found.' });
   });
 
-  if (process.env.NODE_ENV !== 'production') {
+  const distDir = path.resolve(__dirname, 'dist');
+  const isDevMode =
+    process.env.NODE_ENV === 'development' ||
+    !fs.existsSync(path.join(distDir, 'index.html'));
+
+  if (isDevMode) {
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -266,7 +271,6 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    const distDir = path.resolve(__dirname, 'dist');
     app.use(express.static(distDir));
     app.use((req, res, next) => {
       if (req.path.startsWith('/api/')) {
