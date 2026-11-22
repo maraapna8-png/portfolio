@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { usePortfolio } from '../context/PortfolioContext';
 import { Project, GalleryItem, TimelineItem, Skill, Service } from '../types';
 import {
   Shield,
-  Lock,
   LogOut,
   FolderGit2,
   Image as ImageIcon,
@@ -14,8 +13,6 @@ import {
   Trash2,
   Edit2,
   CheckCircle2,
-  Eye,
-  EyeOff,
   ExternalLink,
   RotateCcw,
   Sparkles,
@@ -29,10 +26,12 @@ import {
   Play,
   ArrowUp,
   ArrowDown,
+  ArrowUpDown,
   ChevronLeft,
   ChevronRight,
   GripVertical,
-  ArrowUpDown,
+  CloudUpload,
+  RefreshCw,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { resolveGalleryMedia, extractGoogleDriveId } from '../utils/mediaUtils';
@@ -40,8 +39,13 @@ import { resolveGalleryMedia, extractGoogleDriveId } from '../utils/mediaUtils';
 export const AdminPage: React.FC = () => {
   const {
     isAdminAuthenticated,
-    adminLogin,
+    isAuthReady,
+    authUser,
+    adminLoginWithGoogle,
     adminLogout,
+    syncLocalToCloud,
+    localUnsyncedCount,
+    isSyncingCloud,
     projects,
     addProject,
     updateProject,
@@ -75,9 +79,8 @@ export const AdminPage: React.FC = () => {
   } = usePortfolio();
 
   // Authentication State
-  const [passwordInput, setPasswordInput] = useState('');
-  const [authError, setAuthError] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [isSigningIn, setIsSigningIn] = useState(false);
 
   // Drag and drop reordering states
   const [draggedProjectIndex, setDraggedProjectIndex] = useState<number | null>(null);
@@ -141,6 +144,9 @@ export const AdminPage: React.FC = () => {
 
   // About & Skills Form State
   const [aboutForm, setAboutForm] = useState(siteInfo);
+  useEffect(() => {
+    setAboutForm(siteInfo);
+  }, [siteInfo]);
   const [newSkillName, setNewSkillName] = useState('');
   const [newSkillLevel, setNewSkillLevel] = useState(90);
   const [newSkillCategory, setNewSkillCategory] = useState<Skill['category']>('Frontend');
@@ -148,15 +154,17 @@ export const AdminPage: React.FC = () => {
   // Selected Message for Inspector
   const [selectedSubmissionId, setSelectedSubmissionId] = useState<string | null>(null);
 
-  // Authentication Handler
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    const success = adminLogin(passwordInput);
-    if (!success) {
-      setAuthError(true);
-    } else {
-      setAuthError(false);
-      setPasswordInput('');
+  // Authentication Handler (Firebase Google Sign-In)
+  const handleGoogleLogin = async () => {
+    setAuthError(null);
+    setIsSigningIn(true);
+    try {
+      const result = await adminLoginWithGoogle();
+      if (!result.ok) {
+        setAuthError(result.error || 'Authentication failed. Please try again.');
+      }
+    } finally {
+      setIsSigningIn(false);
     }
   };
 
@@ -274,7 +282,16 @@ export const AdminPage: React.FC = () => {
     setNewSkillName('');
   };
 
-  // Unauthenticated View: Login Screen
+  // Unauthenticated View: Google Sign-In Screen
+  if (!isAuthReady) {
+    return (
+      <div className="max-w-md mx-auto px-4 py-24 text-center">
+        <div className="w-10 h-10 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+        <p className="text-xs text-slate-400">Verifying administrator session...</p>
+      </div>
+    );
+  }
+
   if (!isAdminAuthenticated) {
     return (
       <div className="max-w-md mx-auto px-4 py-16 sm:py-24">
@@ -291,61 +308,39 @@ export const AdminPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <h1 className="text-2xl font-bold text-white tracking-tight">
                 Admin Control Portal
               </h1>
-              <p className="text-xs text-slate-400">
-                Secure access to manage projects, gallery artifacts, messages, and portfolio details.
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Sign in with the portfolio owner Google account to manage projects, gallery media, and client inquiries across all devices in real time.
               </p>
             </div>
 
-            <form onSubmit={handleLogin} className="space-y-4 text-left">
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                  Administrator Passcode
-                </label>
-                <div className="relative">
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    required
-                    value={passwordInput}
-                    onChange={(e) => {
-                      setPasswordInput(e.target.value);
-                      setAuthError(false);
-                    }}
-                    placeholder="Enter administrator passcode"
-                    className="w-full pl-4 pr-11 py-2.5 rounded-xl bg-[#050811] border border-blue-900/50 text-white text-xs placeholder:text-slate-500 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((prev) => !prev)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-cyan-400 focus:outline-none transition-colors cursor-pointer"
-                    aria-label={showPassword ? 'Hide passcode' : 'Show passcode'}
-                    title={showPassword ? 'Hide passcode' : 'Show passcode'}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="w-4 h-4" />
-                    ) : (
-                      <Eye className="w-4 h-4" />
-                    )}
-                  </button>
-                </div>
-                {authError && (
-                  <p className="text-[11px] text-rose-400 mt-1.5 font-medium">
-                    Invalid administrator passcode. Please try again.
-                  </p>
-                )}
+            {authError && (
+              <div className="p-3 rounded-xl bg-rose-950/50 border border-rose-500/40 text-left flex items-start gap-2.5">
+                <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                <p className="text-[11px] text-rose-300 leading-relaxed">{authError}</p>
               </div>
+            )}
 
-              <button
-                type="submit"
-                className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 via-cyan-500 to-blue-600 text-white font-bold text-xs shadow-lg shadow-blue-600/30 hover:shadow-blue-500/50 flex items-center justify-center gap-2 cursor-pointer transition-all"
-              >
+            <button
+              type="button"
+              onClick={handleGoogleLogin}
+              disabled={isSigningIn}
+              className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 via-cyan-500 to-blue-600 text-white font-bold text-xs shadow-lg shadow-blue-600/30 hover:shadow-blue-500/50 flex items-center justify-center gap-2.5 cursor-pointer transition-all disabled:opacity-60"
+            >
+              {isSigningIn ? (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
                 <Shield className="w-4 h-4" />
-                <span>Authorize & Login</span>
-              </button>
-            </form>
+              )}
+              <span>{isSigningIn ? 'Signing in...' : 'Sign in with Google'}</span>
+            </button>
+
+            <p className="text-[11px] text-slate-500">
+              Cloud-secured via Firebase Authentication &amp; Firestore
+            </p>
           </div>
         </div>
       </div>
@@ -372,15 +367,37 @@ export const AdminPage: React.FC = () => {
               Admin Management Portal
             </h1>
             <p className="text-xs text-slate-400">
-              Logged in as M Abdullah Azam • Real-time synchronization active
+              Signed in as {authUser?.email || 'M Abdullah Azam'} • Live Cloud Sync Active
             </p>
           </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
+          {localUnsyncedCount > 0 && (
+            <button
+              type="button"
+              onClick={async () => {
+                const count = await syncLocalToCloud();
+                if (count > 0) {
+                  showToast(`Synced ${count} browser item(s) to shared cloud database`);
+                }
+              }}
+              disabled={isSyncingCloud}
+              className="px-3.5 py-2 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-400/40 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
+              title="Push locally saved items from this browser into the shared cloud database"
+            >
+              {isSyncingCloud ? (
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <CloudUpload className="w-3.5 h-3.5" />
+              )}
+              <span>Sync Browser Changes ({localUnsyncedCount})</span>
+            </button>
+          )}
+
           <button
             onClick={resetAllToDefault}
-            className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-all"
+            className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
             title="Reset to default showcase dataset"
           >
             <RotateCcw className="w-3.5 h-3.5 text-cyan-400" />
@@ -389,7 +406,7 @@ export const AdminPage: React.FC = () => {
 
           <button
             onClick={adminLogout}
-            className="px-4 py-2 rounded-xl bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 text-xs font-semibold flex items-center gap-1.5 transition-all"
+            className="px-4 py-2 rounded-xl bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
           >
             <LogOut className="w-3.5 h-3.5" />
             <span>Sign Out</span>

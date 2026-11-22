@@ -28,7 +28,7 @@ export const ContactPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!fullName.trim() || !email.trim() || !message.trim()) {
       showToast('Please fill out all required fields');
@@ -36,21 +36,23 @@ export const ContactPage: React.FC = () => {
     }
 
     setIsSubmitting(true);
-    setTimeout(() => {
-      submitContact({
-        fullName,
-        email,
-        phone: phone || 'Not provided',
+    try {
+      await submitContact({
+        fullName: fullName.trim(),
+        email: email.trim(),
+        phone: phone.trim() || 'Not provided',
         serviceRequired,
         projectBudget,
-        projectDetails: projectDetails || serviceRequired,
-        message,
+        projectDetails: projectDetails.trim() || serviceRequired,
+        message: message.trim(),
       });
-
-      setIsSubmitting(false);
       setIsSubmitted(true);
       showToast('Inquiry sent successfully!');
-    }, 700);
+    } catch {
+      showToast('Unable to send inquiry. Please check your details and try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleSendAnother = () => {

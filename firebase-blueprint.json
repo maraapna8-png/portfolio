@@ -1,0 +1,166 @@
+{
+  "entities": {
+    "SiteInfo": {
+      "title": "SiteInfo",
+      "description": "Global portfolio configuration, bio, statistics, and contact channels.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "greetingBadge": { "type": "string", "maxLength": 80 },
+        "heroIntro": { "type": "string", "maxLength": 1000 },
+        "bio": { "type": "string", "maxLength": 2000 },
+        "experienceYears": { "type": "string", "maxLength": 30 },
+        "websitesCreated": { "type": "string", "maxLength": 30 },
+        "projectsCompleted": { "type": "string", "maxLength": 30 },
+        "happyClients": { "type": "string", "maxLength": 30 },
+        "email": { "type": "string", "format": "email", "maxLength": 160 },
+        "phone": { "type": "string", "maxLength": 50 },
+        "whatsapp": { "type": "string", "maxLength": 50 },
+        "location": { "type": "string", "maxLength": 200 },
+        "availability": { "type": "string", "maxLength": 200 },
+        "whoIAm": { "type": "string", "maxLength": 3000 },
+        "myGoals": { "type": "string", "maxLength": 3000 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "title", "email"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "A showcased website or software project in the portfolio.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "category": { "type": "string", "enum": ["Websites", "Business", "AI", "Portfolio", "Other"] },
+        "description": { "type": "string", "maxLength": 1000 },
+        "fullDescription": { "type": "string", "maxLength": 5000 },
+        "features": { "type": "array" },
+        "technologies": { "type": "array" },
+        "imageUrl": { "type": "string", "maxLength": 2000 },
+        "liveUrl": { "type": "string", "maxLength": 2000 },
+        "githubUrl": { "type": "string", "maxLength": 2000 },
+        "challenges": { "type": "string", "maxLength": 3000 },
+        "solution": { "type": "string", "maxLength": 3000 },
+        "featured": { "type": "boolean" },
+        "completionDate": { "type": "string", "maxLength": 40 },
+        "order": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "title", "category", "description", "fullDescription", "features", "technologies", "imageUrl", "featured", "order"]
+    },
+    "Service": {
+      "title": "Service",
+      "description": "A digital service offered by the portfolio owner.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 150 },
+        "description": { "type": "string", "maxLength": 1000 },
+        "iconName": { "type": "string", "maxLength": 80 },
+        "features": { "type": "array" },
+        "order": { "type": "number" }
+      },
+      "required": ["id", "title", "description", "iconName", "features"]
+    },
+    "Skill": {
+      "title": "Skill",
+      "description": "A technical or creative skill displayed on the About page.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "level": { "type": "number" },
+        "category": { "type": "string", "enum": ["Frontend", "Design & UX", "Content & Video", "AI & Tools"] },
+        "iconName": { "type": "string", "maxLength": 80 },
+        "experienceYears": { "type": "string", "maxLength": 40 },
+        "order": { "type": "number" }
+      },
+      "required": ["id", "name", "level", "category"]
+    },
+    "GalleryItem": {
+      "title": "GalleryItem",
+      "description": "An image or video artifact displayed in the gallery.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "category": { "type": "string", "enum": ["My Work", "Websites", "Designs", "Videos", "Certificates", "Other"] },
+        "imageUrl": { "type": "string", "maxLength": 2000 },
+        "videoUrl": { "type": "string", "maxLength": 2000 },
+        "description": { "type": "string", "maxLength": 2000 },
+        "date": { "type": "string", "maxLength": 40 },
+        "tags": { "type": "array" },
+        "order": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "title", "category", "imageUrl", "description", "order"]
+    },
+    "TimelineItem": {
+      "title": "TimelineItem",
+      "description": "A milestone in the journey history timeline.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "year": { "type": "string", "minLength": 1, "maxLength": 50 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "description": { "type": "string", "maxLength": 2000 },
+        "achievement": { "type": "string", "maxLength": 1000 },
+        "imageUrl": { "type": "string", "maxLength": 2000 },
+        "badge": { "type": "string", "maxLength": 80 },
+        "order": { "type": "number" }
+      },
+      "required": ["id", "year", "title", "description", "achievement"]
+    },
+    "ContactSubmission": {
+      "title": "ContactSubmission",
+      "description": "Private client inquiry submitted through the Contact or Hire Me form.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "fullName": { "type": "string", "minLength": 1, "maxLength": 150 },
+        "email": { "type": "string", "format": "email", "minLength": 3, "maxLength": 160 },
+        "phone": { "type": "string", "maxLength": 50 },
+        "serviceRequired": { "type": "string", "minLength": 1, "maxLength": 150 },
+        "projectBudget": { "type": "string", "maxLength": 100 },
+        "projectDetails": { "type": "string", "maxLength": 2000 },
+        "message": { "type": "string", "minLength": 1, "maxLength": 5000 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "read": { "type": "boolean" }
+      },
+      "required": ["id", "fullName", "email", "phone", "serviceRequired", "projectBudget", "projectDetails", "message", "createdAt", "read"]
+    }
+  },
+  "firestore": {
+    "/siteConfig/{docId}": {
+      "schema": { "$ref": "#/entities/SiteInfo" },
+      "description": "Portfolio global info document (docId = main)."
+    },
+    "/projects/{projectId}": {
+      "schema": { "$ref": "#/entities/Project" },
+      "description": "Publicly readable portfolio projects; admin-only writes."
+    },
+    "/services/{serviceId}": {
+      "schema": { "$ref": "#/entities/Service" },
+      "description": "Publicly readable services; admin-only writes."
+    },
+    "/skills/{skillId}": {
+      "schema": { "$ref": "#/entities/Skill" },
+      "description": "Publicly readable skills; admin-only writes."
+    },
+    "/gallery/{galleryId}": {
+      "schema": { "$ref": "#/entities/GalleryItem" },
+      "description": "Publicly readable gallery images and videos; admin-only writes."
+    },
+    "/timeline/{timelineId}": {
+      "schema": { "$ref": "#/entities/TimelineItem" },
+      "description": "Publicly readable career timeline milestones; admin-only writes."
+    },
+    "/contactSubmissions/{submissionId}": {
+      "schema": { "$ref": "#/entities/ContactSubmission" },
+      "description": "Client inquiries with PII; public create allowed, read/update/delete strictly admin-only."
+    }
+  }
+}

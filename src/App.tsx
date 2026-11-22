@@ -14,6 +14,7 @@ import { GalleryLightbox } from './components/GalleryLightbox';
 import { HireMeModal } from './components/HireMeModal';
 import { Toast } from './components/Toast';
 import { WelcomeSplash } from './components/WelcomeSplash';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { motion, AnimatePresence } from 'motion/react';
 
 const PortfolioContent: React.FC = () => {
@@ -85,8 +86,10 @@ const PortfolioContent: React.FC = () => {
 
 export default function App() {
   return (
-    <PortfolioProvider>
-      <PortfolioContent />
-    </PortfolioProvider>
+    <ErrorBoundary>
+      <PortfolioProvider>
+        <PortfolioContent />
+      </PortfolioProvider>
+    </ErrorBoundary>
   );
 }

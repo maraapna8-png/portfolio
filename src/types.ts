@@ -13,6 +13,9 @@ export interface Project {
   solution?: string;
   featured: boolean;
   completionDate?: string;
+  order?: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Service {
@@ -21,6 +24,7 @@ export interface Service {
   description: string;
   iconName: string;
   features: string[];
+  order?: number;
 }
 
 export interface Skill {
@@ -30,6 +34,7 @@ export interface Skill {
   category: 'Frontend' | 'Design & UX' | 'Content & Video' | 'AI & Tools';
   iconName?: string;
   experienceYears?: string;
+  order?: number;
 }
 
 export interface GalleryItem {
@@ -41,6 +46,9 @@ export interface GalleryItem {
   description: string;
   date?: string;
   tags?: string[];
+  order?: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface TimelineItem {
@@ -51,6 +59,7 @@ export interface TimelineItem {
   achievement: string;
   imageUrl?: string;
   badge?: string;
+  order?: number;
 }
 
 export interface ContactSubmission {
@@ -83,6 +92,7 @@ export interface SiteInfo {
   availability: string;
   whoIAm: string;
   myGoals: string;
+  updatedAt?: string;
 }
 
 export type PageTab = 'home' | 'about' | 'projects' | 'gallery' | 'history' | 'contact' | 'admin';

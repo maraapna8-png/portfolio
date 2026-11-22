@@ -1,0 +1,326 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Default Deny Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // =========================================================================
+    // GLOBAL HARDENED PRIMITIVES
+    // =========================================================================
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isAdmin() {
+      return isVerifiedUser() && request.auth.token.email == 'maraapna8@gmail.com';
+    }
+
+    function isBoundedString(val, minLen, maxLen) {
+      return val is string && val.size() >= minLen && val.size() <= maxLen;
+    }
+
+    function isOptionalBoundedString(data, key, maxLen) {
+      return !(key in data) || (data[key] is string && data[key].size() <= maxLen);
+    }
+
+    function isBoundedStringList(arr, maxItems) {
+      return arr is list
+        && arr.size() <= maxItems
+        && (arr.size() == 0 || (arr[0] is string && arr[0].size() <= 200));
+    }
+
+    // =========================================================================
+    // ENTITY VALIDATION BLUEPRINTS (Synchronized with firebase-blueprint.json)
+    // =========================================================================
+    function isValidSiteInfo(data) {
+      return data.keys().hasAll(['name', 'title', 'email'])
+        && data.keys().hasOnly([
+          'name', 'title', 'greetingBadge', 'heroIntro', 'bio',
+          'experienceYears', 'websitesCreated', 'projectsCompleted', 'happyClients',
+          'email', 'phone', 'whatsapp', 'location', 'availability',
+          'whoIAm', 'myGoals', 'updatedAt'
+        ])
+        && isBoundedString(data.name, 1, 120)
+        && isBoundedString(data.title, 1, 200)
+        && isBoundedString(data.email, 3, 160)
+        && isOptionalBoundedString(data, 'greetingBadge', 80)
+        && isOptionalBoundedString(data, 'heroIntro', 1000)
+        && isOptionalBoundedString(data, 'bio', 2000)
+        && isOptionalBoundedString(data, 'experienceYears', 30)
+        && isOptionalBoundedString(data, 'websitesCreated', 30)
+        && isOptionalBoundedString(data, 'projectsCompleted', 30)
+        && isOptionalBoundedString(data, 'happyClients', 30)
+        && isOptionalBoundedString(data, 'phone', 50)
+        && isOptionalBoundedString(data, 'whatsapp', 50)
+        && isOptionalBoundedString(data, 'location', 200)
+        && isOptionalBoundedString(data, 'availability', 200)
+        && isOptionalBoundedString(data, 'whoIAm', 3000)
+        && isOptionalBoundedString(data, 'myGoals', 3000)
+        && isOptionalBoundedString(data, 'updatedAt', 64);
+    }
+
+    function isValidProject(data) {
+      return data.keys().hasAll([
+          'id', 'title', 'category', 'description', 'fullDescription',
+          'features', 'technologies', 'imageUrl', 'featured', 'order'
+        ])
+        && data.keys().hasOnly([
+          'id', 'title', 'category', 'description', 'fullDescription',
+          'features', 'technologies', 'imageUrl', 'liveUrl', 'githubUrl',
+          'challenges', 'solution', 'featured', 'completionDate', 'order',
+          'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.id)
+        && isBoundedString(data.title, 1, 200)
+        && data.category in ['Websites', 'Business', 'AI', 'Portfolio', 'Other']
+        && isBoundedString(data.description, 0, 1000)
+        && isBoundedString(data.fullDescription, 0, 5000)
+        && isBoundedStringList(data.features, 20)
+        && isBoundedStringList(data.technologies, 20)
+        && isBoundedString(data.imageUrl, 0, 2000)
+        && isOptionalBoundedString(data, 'liveUrl', 2000)
+        && isOptionalBoundedString(data, 'githubUrl', 2000)
+        && isOptionalBoundedString(data, 'challenges', 3000)
+        && isOptionalBoundedString(data, 'solution', 3000)
+        && data.featured is bool
+        && isOptionalBoundedString(data, 'completionDate', 40)
+        && (data.order is int || data.order is float)
+        && data.order >= 0 && data.order <= 100000
+        && isOptionalBoundedString(data, 'createdAt', 64)
+        && isOptionalBoundedString(data, 'updatedAt', 64);
+    }
+
+    function isValidService(data) {
+      return data.keys().hasAll(['id', 'title', 'description', 'iconName', 'features'])
+        && data.keys().hasOnly(['id', 'title', 'description', 'iconName', 'features', 'order'])
+        && isValidId(data.id)
+        && isBoundedString(data.title, 1, 150)
+        && isBoundedString(data.description, 0, 1000)
+        && isBoundedString(data.iconName, 1, 80)
+        && isBoundedStringList(data.features, 20)
+        && (!('order' in data) || ((data.order is int || data.order is float) && data.order >= 0 && data.order <= 100000));
+    }
+
+    function isValidSkill(data) {
+      return data.keys().hasAll(['id', 'name', 'level', 'category'])
+        && data.keys().hasOnly(['id', 'name', 'level', 'category', 'iconName', 'experienceYears', 'order'])
+        && isValidId(data.id)
+        && isBoundedString(data.name, 1, 100)
+        && (data.level is int || data.level is float)
+        && data.level >= 0 && data.level <= 100
+        && data.category in ['Frontend', 'Design & UX', 'Content & Video', 'AI & Tools']
+        && isOptionalBoundedString(data, 'iconName', 80)
+        && isOptionalBoundedString(data, 'experienceYears', 40)
+        && (!('order' in data) || ((data.order is int || data.order is float) && data.order >= 0 && data.order <= 100000));
+    }
+
+    function isValidGalleryItem(data) {
+      return data.keys().hasAll(['id', 'title', 'category', 'imageUrl', 'description', 'order'])
+        && data.keys().hasOnly([
+          'id', 'title', 'category', 'imageUrl', 'videoUrl',
+          'description', 'date', 'tags', 'order', 'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.id)
+        && isBoundedString(data.title, 1, 200)
+        && data.category in ['My Work', 'Websites', 'Designs', 'Videos', 'Certificates', 'Other']
+        && isBoundedString(data.imageUrl, 0, 2000)
+        && isOptionalBoundedString(data, 'videoUrl', 2000)
+        && isBoundedString(data.description, 0, 2000)
+        && isOptionalBoundedString(data, 'date', 40)
+        && (!('tags' in data) || isBoundedStringList(data.tags, 20))
+        && (data.order is int || data.order is float)
+        && data.order >= 0 && data.order <= 100000
+        && isOptionalBoundedString(data, 'createdAt', 64)
+        && isOptionalBoundedString(data, 'updatedAt', 64);
+    }
+
+    function isValidTimelineItem(data) {
+      return data.keys().hasAll(['id', 'year', 'title', 'description', 'achievement'])
+        && data.keys().hasOnly(['id', 'year', 'title', 'description', 'achievement', 'imageUrl', 'badge', 'order'])
+        && isValidId(data.id)
+        && isBoundedString(data.year, 1, 50)
+        && isBoundedString(data.title, 1, 200)
+        && isBoundedString(data.description, 0, 2000)
+        && isBoundedString(data.achievement, 0, 1000)
+        && isOptionalBoundedString(data, 'imageUrl', 2000)
+        && isOptionalBoundedString(data, 'badge', 80)
+        && (!('order' in data) || ((data.order is int || data.order is float) && data.order >= 0 && data.order <= 100000));
+    }
+
+    function isValidContactSubmission(data) {
+      return data.keys().hasAll([
+          'id', 'fullName', 'email', 'phone', 'serviceRequired',
+          'projectBudget', 'projectDetails', 'message', 'createdAt', 'read'
+        ])
+        && data.keys().hasOnly([
+          'id', 'fullName', 'email', 'phone', 'serviceRequired',
+          'projectBudget', 'projectDetails', 'message', 'createdAt', 'read'
+        ])
+        && isValidId(data.id)
+        && isBoundedString(data.fullName, 1, 150)
+        && isBoundedString(data.email, 3, 160)
+        && isBoundedString(data.phone, 0, 50)
+        && isBoundedString(data.serviceRequired, 1, 150)
+        && isBoundedString(data.projectBudget, 0, 100)
+        && isBoundedString(data.projectDetails, 0, 2000)
+        && isBoundedString(data.message, 1, 5000)
+        && isBoundedString(data.createdAt, 1, 64)
+        && data.read is bool;
+    }
+
+    // =========================================================================
+    // COLLECTION MATCH BLOCKS
+    // =========================================================================
+
+    // Startup Connectivity Check
+    match /test/connection {
+      allow get: if true;
+    }
+
+    // Portfolio Site Configuration (Public Read, Admin Write)
+    match /siteConfig/{docId} {
+      allow get: if isValidId(docId);
+      allow list: if true;
+      allow create: if isAdmin() && isValidId(docId) && docId == 'main' && isValidSiteInfo(incoming());
+      allow update: if isValidSiteInfo(incoming())
+        && isAdmin()
+        && isValidId(docId)
+        && docId == 'main'
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'name', 'title', 'greetingBadge', 'heroIntro', 'bio',
+          'experienceYears', 'websitesCreated', 'projectsCompleted', 'happyClients',
+          'email', 'phone', 'whatsapp', 'location', 'availability',
+          'whoIAm', 'myGoals', 'updatedAt'
+        ]);
+      allow delete: if isAdmin() && isValidId(docId);
+    }
+
+    // Projects Showcase (Public Read, Admin Write)
+    match /projects/{projectId} {
+      allow get: if isValidId(projectId);
+      allow list: if true;
+      allow create: if isAdmin()
+        && isValidId(projectId)
+        && isValidProject(incoming())
+        && incoming().id == projectId;
+      allow update: if isValidProject(incoming())
+        && isAdmin()
+        && isValidId(projectId)
+        && incoming().id == existing().id
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'title', 'category', 'description', 'fullDescription',
+          'features', 'technologies', 'imageUrl', 'liveUrl', 'githubUrl',
+          'challenges', 'solution', 'featured', 'completionDate', 'order', 'updatedAt'
+        ]);
+      allow delete: if isAdmin() && isValidId(projectId);
+    }
+
+    // Services Showcase (Public Read, Admin Write)
+    match /services/{serviceId} {
+      allow get: if isValidId(serviceId);
+      allow list: if true;
+      allow create: if isAdmin()
+        && isValidId(serviceId)
+        && isValidService(incoming())
+        && incoming().id == serviceId;
+      allow update: if isValidService(incoming())
+        && isAdmin()
+        && isValidId(serviceId)
+        && incoming().id == existing().id
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'title', 'description', 'iconName', 'features', 'order'
+        ]);
+      allow delete: if isAdmin() && isValidId(serviceId);
+    }
+
+    // Skills Showcase (Public Read, Admin Write)
+    match /skills/{skillId} {
+      allow get: if isValidId(skillId);
+      allow list: if true;
+      allow create: if isAdmin()
+        && isValidId(skillId)
+        && isValidSkill(incoming())
+        && incoming().id == skillId;
+      allow update: if isValidSkill(incoming())
+        && isAdmin()
+        && isValidId(skillId)
+        && incoming().id == existing().id
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'name', 'level', 'category', 'iconName', 'experienceYears', 'order'
+        ]);
+      allow delete: if isAdmin() && isValidId(skillId);
+    }
+
+    // Gallery Showcase (Public Read, Admin Write)
+    match /gallery/{galleryId} {
+      allow get: if isValidId(galleryId);
+      allow list: if true;
+      allow create: if isAdmin()
+        && isValidId(galleryId)
+        && isValidGalleryItem(incoming())
+        && incoming().id == galleryId;
+      allow update: if isValidGalleryItem(incoming())
+        && isAdmin()
+        && isValidId(galleryId)
+        && incoming().id == existing().id
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'title', 'category', 'imageUrl', 'videoUrl',
+          'description', 'date', 'tags', 'order', 'updatedAt'
+        ]);
+      allow delete: if isAdmin() && isValidId(galleryId);
+    }
+
+    // History Timeline (Public Read, Admin Write)
+    match /timeline/{timelineId} {
+      allow get: if isValidId(timelineId);
+      allow list: if true;
+      allow create: if isAdmin()
+        && isValidId(timelineId)
+        && isValidTimelineItem(incoming())
+        && incoming().id == timelineId;
+      allow update: if isValidTimelineItem(incoming())
+        && isAdmin()
+        && isValidId(timelineId)
+        && incoming().id == existing().id
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'year', 'title', 'description', 'achievement', 'imageUrl', 'badge', 'order'
+        ]);
+      allow delete: if isAdmin() && isValidId(timelineId);
+    }
+
+    // Client Contact Inquiries (PII Isolated: Public Create, Admin-Only Read/Update/Delete)
+    match /contactSubmissions/{submissionId} {
+      allow get: if isAdmin() && isValidId(submissionId);
+      allow list: if isAdmin();
+      allow create: if isValidId(submissionId)
+        && isValidContactSubmission(incoming())
+        && incoming().id == submissionId
+        && incoming().read == false;
+      allow update: if isValidContactSubmission(incoming())
+        && isAdmin()
+        && isValidId(submissionId)
+        && incoming().id == existing().id
+        && incoming().createdAt == existing().createdAt
+        && incoming().diff(existing()).affectedKeys().hasOnly(['read']);
+      allow delete: if isAdmin() && isValidId(submissionId);
+    }
+  }
+}
