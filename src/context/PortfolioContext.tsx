@@ -52,6 +52,8 @@ interface AuthResult {
   error?: string;
 }
 
+type AdminAuthMode = 'loading' | 'login' | 'claim';
+
 interface PortfolioContextType {
   activePage: PageTab;
   setActivePage: (page: PageTab) => void;
@@ -88,9 +90,14 @@ interface PortfolioContextType {
   clearAllContactSubmissions: () => Promise<void>;
   isAdminAuthenticated: boolean;
   isAuthReady: boolean;
-  authUser: User | null;
-  adminLoginWithGoogle: () => Promise<AuthResult>;
+  adminAuthMode: AdminAuthMode;
+  adminLoginWithPasscode: (passcode: string) => Promise<AuthResult>;
+  adminClaimPasscode: (passcode: string) => Promise<AuthResult>;
   adminLogout: () => Promise<void>;
+  isCloudAdminAuthorized: boolean;
+  authUser: User | null;
+  connectCloudSync: () => Promise<AuthResult>;
+  disconnectCloudSync: () => Promise<void>;
   syncLocalToCloud: () => Promise<number>;
   localUnsyncedCount: number;
   isSyncingCloud: boolean;
@@ -297,8 +304,16 @@ const sanitizeContactPayload = (c: ContactSubmission): Record<string, unknown> =
 });
 
 // ============================================================================
-// LOCALSTORAGE READ HELPERS (Fallback + Pre-Cloud Migration)
+// LOCALSTORAGE READ HELPERS (Fallback + Local Persistence)
 // ============================================================================
+const safeSaveLocal = (key: string, value: unknown) => {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // ignore
+  }
+};
+
 const readLocalSiteInfo = (): SiteInfo => {
   try {
     const saved = localStorage.getItem('portfolio_site_info');
@@ -483,7 +498,7 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Core portfolio states (hydrated immediately from local defaults/cache, synced live from Firestore)
+  // Core portfolio states
   const [siteInfo, setSiteInfo] = useState<SiteInfo>(readLocalSiteInfo);
   const [projects, setProjects] = useState<Project[]>(readLocalProjects);
   const [services, setServices] = useState<Service[]>(readLocalServices);
@@ -502,11 +517,16 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
   const [isSyncingCloud, setIsSyncingCloud] = useState<boolean>(false);
   const [localUnsyncedCount, setLocalUnsyncedCount] = useState<number>(0);
 
-  // Auth state (Firebase Google Auth)
-  const [authUser, setAuthUser] = useState<User | null>(null);
+  // Admin Passcode Session State (token stored strictly in React memory)
+  const [adminToken, setAdminToken] = useState<string | null>(null);
+  const [adminAuthMode, setAdminAuthMode] = useState<AdminAuthMode>('loading');
   const [isAuthReady, setIsAuthReady] = useState<boolean>(false);
+  const isAdminAuthenticated = Boolean(adminToken);
 
-  const isAdminAuthenticated = Boolean(
+  // Optional Firebase Cloud Sync Auth State (Google Auth for Firestore write rules)
+  const [authUser, setAuthUser] = useState<User | null>(null);
+  const [isFirebaseAuthReady, setIsFirebaseAuthReady] = useState<boolean>(false);
+  const isCloudAdminAuthorized = Boolean(
     authUser &&
       authUser.email?.toLowerCase() === ADMIN_EMAIL &&
       authUser.emailVerified
@@ -531,7 +551,7 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
     }, 3500);
   }, []);
 
-  // Purge legacy demo contacts from localStorage if present from earlier sessions
+  // Purge legacy insecure localStorage keys
   useEffect(() => {
     try {
       localStorage.removeItem('portfolio_contacts');
@@ -541,18 +561,51 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
     }
   }, []);
 
-  // 1. Firebase Authentication State Listener
+  // 1. Check Server Admin Auth Mode (/api/admin/status)
+  useEffect(() => {
+    let active = true;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5000);
+
+    const checkStatus = async () => {
+      try {
+        const res = await fetch('/api/admin/status', {
+          cache: 'no-store',
+          signal: controller.signal,
+        });
+        const contentType = res.headers.get('content-type') || '';
+        if (res.ok && contentType.includes('application/json') && active) {
+          const data = (await res.json()) as { mode?: 'login' | 'claim' };
+          setAdminAuthMode(data.mode === 'claim' ? 'claim' : 'login');
+        } else if (active) {
+          setAdminAuthMode('login');
+        }
+      } catch {
+        if (active) setAdminAuthMode('login');
+      } finally {
+        clearTimeout(timer);
+        if (active) setIsAuthReady(true);
+      }
+    };
+    void checkStatus();
+    return () => {
+      active = false;
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, []);
+
+  // 2. Firebase Auth State Listener (for Cloud Sync privilege)
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setAuthUser(user);
-      setIsAuthReady(true);
+      setIsFirebaseAuthReady(true);
     });
     return () => unsubscribe();
   }, []);
 
-  // 2. Public Real-time Firestore Listeners (Active across all origins & visitors)
+  // 3. Public Real-time Firestore Listeners (Active across all origins & visitors)
   useEffect(() => {
-    // siteConfig/main
     const unsubSiteInfo = onSnapshot(
       doc(db, 'siteConfig', 'main'),
       (snap) => {
@@ -560,11 +613,7 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
           setIsCloudSeeded(true);
           const data = snap.data() as SiteInfo;
           setSiteInfo(data);
-          try {
-            localStorage.setItem('portfolio_site_info', JSON.stringify(data));
-          } catch {
-            // ignore
-          }
+          safeSaveLocal('portfolio_site_info', data);
         } else {
           setIsCloudSeeded(false);
         }
@@ -578,7 +627,6 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
       }
     );
 
-    // projects
     const unsubProjects = onSnapshot(
       query(collection(db, 'projects'), orderBy('order', 'asc')),
       (snapshot) => {
@@ -590,11 +638,7 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
         setCloudProjectIds(ids);
         if (docs.length > 0) {
           setProjects(docs);
-          try {
-            localStorage.setItem('portfolio_projects', JSON.stringify(docs));
-          } catch {
-            // ignore
-          }
+          safeSaveLocal('portfolio_projects', docs);
         }
       },
       (error) => {
@@ -606,7 +650,6 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
       }
     );
 
-    // gallery
     const unsubGallery = onSnapshot(
       query(collection(db, 'gallery'), orderBy('order', 'asc')),
       (snapshot) => {
@@ -618,11 +661,7 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
         setCloudGalleryIds(ids);
         if (docs.length > 0) {
           setGalleryItems(docs);
-          try {
-            localStorage.setItem('portfolio_gallery', JSON.stringify(docs));
-          } catch {
-            // ignore
-          }
+          safeSaveLocal('portfolio_gallery', docs);
         }
       },
       (error) => {
@@ -634,7 +673,6 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
       }
     );
 
-    // services
     const unsubServices = onSnapshot(
       query(collection(db, 'services'), orderBy('order', 'asc')),
       (snapshot) => {
@@ -646,11 +684,7 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
         setCloudServiceIds(ids);
         if (docs.length > 0) {
           setServices(docs);
-          try {
-            localStorage.setItem('portfolio_services', JSON.stringify(docs));
-          } catch {
-            // ignore
-          }
+          safeSaveLocal('portfolio_services', docs);
         }
       },
       (error) => {
@@ -662,7 +696,6 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
       }
     );
 
-    // skills
     const unsubSkills = onSnapshot(
       query(collection(db, 'skills'), orderBy('order', 'asc')),
       (snapshot) => {
@@ -674,11 +707,7 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
         setCloudSkillIds(ids);
         if (docs.length > 0) {
           setSkills(docs);
-          try {
-            localStorage.setItem('portfolio_skills', JSON.stringify(docs));
-          } catch {
-            // ignore
-          }
+          safeSaveLocal('portfolio_skills', docs);
         }
       },
       (error) => {
@@ -690,7 +719,6 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
       }
     );
 
-    // timeline
     const unsubTimeline = onSnapshot(
       query(collection(db, 'timeline'), orderBy('order', 'asc')),
       (snapshot) => {
@@ -702,11 +730,7 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
         setCloudTimelineIds(ids);
         if (docs.length > 0) {
           setTimelineItems(docs);
-          try {
-            localStorage.setItem('portfolio_timeline', JSON.stringify(docs));
-          } catch {
-            // ignore
-          }
+          safeSaveLocal('portfolio_timeline', docs);
         }
       },
       (error) => {
@@ -728,19 +752,9 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
     };
   }, []);
 
-  // If cloud DB is already seeded and has docs, keep empty state faithfully if admin deleted all items
-  // (handled cleanly: snapshot only overwrites when docs exist OR when seeding completes; if admin deletes last doc, optimistic update + snapshot reflect empty if seeded)
+  // 4. Admin-Only Contact Submissions Listener (Only when Firebase Cloud Admin is authorized)
   useEffect(() => {
-    if (!isCloudSeeded) return;
-    // Sync empty collections accurately if cloud was seeded and all items were deleted
-    if (cloudProjectIds.size === 0 && projects.length > 0) {
-      // Wait only if projects snapshot legitimately emptied after seeding
-    }
-  }, [isCloudSeeded, cloudProjectIds.size, projects.length]);
-
-  // 3. Admin-Only Contact Submissions Listener (Strict PII Isolation)
-  useEffect(() => {
-    if (!isAuthReady || !isAdminAuthenticated) {
+    if (!isFirebaseAuthReady || !isCloudAdminAuthorized) {
       setContactSubmissions([]);
       return;
     }
@@ -761,36 +775,24 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
     );
 
     return () => unsubContacts();
-  }, [isAuthReady, isAdminAuthenticated]);
+  }, [isFirebaseAuthReady, isCloudAdminAuthorized]);
 
-  // Helper: Check how many local browser items are not yet in Firestore
-  const computeLocalOnlyItems = useCallback(
-    (existingProjIds: Set<string>, existingGalIds: Set<string>) => {
-      const localProjs = readLocalProjects().filter(
-        (p) => !existingProjIds.has(sanitizeId(p.id, 'proj'))
-      );
-      const localGal = readLocalGallery().filter(
-        (g) => !existingGalIds.has(sanitizeId(g.id, 'gal'))
-      );
-      return { localProjs, localGal };
-    },
-    []
-  );
-
+  // Track unsynced local items compared to Firestore
   useEffect(() => {
     if (!isCloudSeeded) {
-      setLocalUnsyncedCount(0);
+      setLocalUnsyncedCount(projects.length > initialProjects.length ? projects.length - initialProjects.length : 0);
       return;
     }
-    const { localProjs, localGal } = computeLocalOnlyItems(cloudProjectIds, cloudGalleryIds);
-    setLocalUnsyncedCount(localProjs.length + localGal.length);
-  }, [isCloudSeeded, cloudProjectIds, cloudGalleryIds, computeLocalOnlyItems]);
+    const unsyncedProjs = projects.filter((p) => !cloudProjectIds.has(sanitizeId(p.id, 'proj')));
+    const unsyncedGal = galleryItems.filter((g) => !cloudGalleryIds.has(sanitizeId(g.id, 'gal')));
+    setLocalUnsyncedCount(unsyncedProjs.length + unsyncedGal.length);
+  }, [isCloudSeeded, projects, galleryItems, cloudProjectIds, cloudGalleryIds]);
 
-  // 4. Automatic Initial Cloud Seeding & Local-to-Cloud Migration on Admin Login
+  // 5. Cloud Sync / Seeding (Only runs when Firebase Cloud Admin is authorized)
   const migrationAttemptedRef = useRef(false);
 
   const syncLocalToCloud = useCallback(async (): Promise<number> => {
-    if (!isAdminAuthenticated) return 0;
+    if (!isCloudAdminAuthorized) return 0;
     setIsSyncingCloud(true);
     let syncedCount = 0;
 
@@ -819,22 +821,19 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
       const existingTimeIds = new Set(timeSnap.docs.map((d) => d.id));
 
       if (!siteSnap.exists()) {
-        const localInfo = readLocalSiteInfo();
-        batch.set(doc(db, 'siteConfig', 'main'), sanitizeSiteInfoPayload(localInfo));
+        batch.set(doc(db, 'siteConfig', 'main'), sanitizeSiteInfoPayload(siteInfo));
         syncedCount += 1;
       }
 
-      const localProjs = readLocalProjects();
       if (existingProjIds.size === 0) {
-        localProjs.forEach((p, idx) => {
+        projects.forEach((p, idx) => {
           const id = sanitizeId(p.id, 'proj');
           batch.set(doc(db, 'projects', id), sanitizeProjectPayload({ ...p, id }, idx));
           syncedCount += 1;
         });
       } else {
-        // Upload any local-only custom projects that aren't in Firestore yet
         let nextOrder = existingProjIds.size;
-        localProjs.forEach((p) => {
+        projects.forEach((p) => {
           const id = sanitizeId(p.id, 'proj');
           if (!existingProjIds.has(id)) {
             batch.set(doc(db, 'projects', id), sanitizeProjectPayload({ ...p, id }, nextOrder++));
@@ -843,16 +842,15 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
         });
       }
 
-      const localGallery = readLocalGallery();
       if (existingGalIds.size === 0) {
-        localGallery.forEach((g, idx) => {
+        galleryItems.forEach((g, idx) => {
           const id = sanitizeId(g.id, 'gal');
           batch.set(doc(db, 'gallery', id), sanitizeGalleryPayload({ ...g, id }, idx));
           syncedCount += 1;
         });
       } else {
         let nextOrder = existingGalIds.size;
-        localGallery.forEach((g) => {
+        galleryItems.forEach((g) => {
           const id = sanitizeId(g.id, 'gal');
           if (!existingGalIds.has(id)) {
             batch.set(doc(db, 'gallery', id), sanitizeGalleryPayload({ ...g, id }, nextOrder++));
@@ -862,7 +860,7 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
       }
 
       if (existingSrvIds.size === 0) {
-        readLocalServices().forEach((s, idx) => {
+        services.forEach((s, idx) => {
           const id = sanitizeId(s.id, 'srv');
           batch.set(doc(db, 'services', id), sanitizeServicePayload({ ...s, id }, idx));
           syncedCount += 1;
@@ -870,7 +868,7 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
       }
 
       if (existingSkIds.size === 0) {
-        readLocalSkills().forEach((sk, idx) => {
+        skills.forEach((sk, idx) => {
           const id = sanitizeId(sk.id, 'sk');
           batch.set(doc(db, 'skills', id), sanitizeSkillPayload({ ...sk, id }, idx));
           syncedCount += 1;
@@ -878,7 +876,7 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
       }
 
       if (existingTimeIds.size === 0) {
-        readLocalTimeline().forEach((t, idx) => {
+        timelineItems.forEach((t, idx) => {
           const id = sanitizeId(t.id, 'time');
           batch.set(doc(db, 'timeline', id), sanitizeTimelinePayload({ ...t, id }, idx));
           syncedCount += 1;
@@ -900,10 +898,10 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
     } finally {
       setIsSyncingCloud(false);
     }
-  }, [isAdminAuthenticated]);
+  }, [isCloudAdminAuthorized, siteInfo, projects, galleryItems, services, skills, timelineItems]);
 
   useEffect(() => {
-    if (!isAuthReady || !isAdminAuthenticated || migrationAttemptedRef.current) return;
+    if (!isFirebaseAuthReady || !isCloudAdminAuthorized || migrationAttemptedRef.current) return;
     migrationAttemptedRef.current = true;
 
     const runInitialCloudSync = async () => {
@@ -929,12 +927,12 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
     };
 
     void runInitialCloudSync();
-  }, [isAuthReady, isAdminAuthenticated, syncLocalToCloud, showToast]);
+  }, [isFirebaseAuthReady, isCloudAdminAuthorized, syncLocalToCloud, showToast]);
 
-  // Helper to ensure initial docs are materialized in Firestore before single-doc updates/deletes
   const ensureCollectionInCloud = async (
     target: 'projects' | 'gallery' | 'services' | 'skills' | 'timeline'
   ) => {
+    if (!isCloudAdminAuthorized) return;
     const batch = writeBatch(db);
     let writes = 0;
 
@@ -986,11 +984,18 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
   };
 
   // ==========================================================================
-  // CRUD & REORDER ACTIONS (Firestore + Real-Time Sync)
+  // CRUD & REORDER ACTIONS (Local immediately + Cloud when authorized)
   // ==========================================================================
   const updateSiteInfo = async (info: Partial<SiteInfo>) => {
     const merged: SiteInfo = { ...siteInfo, ...info };
     setSiteInfo(merged);
+    safeSaveLocal('portfolio_site_info', merged);
+
+    if (!isCloudAdminAuthorized) {
+      showToast('Site info saved locally');
+      return;
+    }
+
     try {
       await setDoc(doc(db, 'siteConfig', 'main'), sanitizeSiteInfoPayload(merged));
       showToast('Site info synced to cloud database');
@@ -1004,6 +1009,12 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
     const newProj: Project = { ...project, id, order: 0, createdAt: new Date().toISOString() };
     const updatedList = [newProj, ...projects].map((p, idx) => ({ ...p, order: idx }));
     setProjects(updatedList);
+    safeSaveLocal('portfolio_projects', updatedList);
+
+    if (!isCloudAdminAuthorized) {
+      showToast('Project saved locally');
+      return;
+    }
 
     try {
       const batch = writeBatch(db);
@@ -1031,7 +1042,14 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
     if (!existing) return;
 
     const merged: Project = { ...existing, ...updated };
-    setProjects((prev) => prev.map((p) => (p.id === id ? merged : p)));
+    const nextList = projects.map((p) => (p.id === id ? merged : p));
+    setProjects(nextList);
+    safeSaveLocal('portfolio_projects', nextList);
+
+    if (!isCloudAdminAuthorized) {
+      showToast('Project updated locally');
+      return;
+    }
 
     try {
       await ensureCollectionInCloud('projects');
@@ -1055,10 +1073,11 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
   const deleteProject = async (id: string) => {
     const remaining = projects.filter((p) => p.id !== id);
     setProjects(remaining);
-    try {
-      localStorage.setItem('portfolio_projects', JSON.stringify(remaining));
-    } catch {
-      // ignore
+    safeSaveLocal('portfolio_projects', remaining);
+
+    if (!isCloudAdminAuthorized) {
+      showToast('Project removed locally');
+      return;
     }
 
     try {
@@ -1071,6 +1090,7 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
   };
 
   const persistProjectOrders = async (ordered: Project[]) => {
+    if (!isCloudAdminAuthorized) return;
     try {
       const batch = writeBatch(db);
       ordered.forEach((p, idx) => {
@@ -1105,6 +1125,7 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
     next.splice(targetIndex, 0, moved);
     const reindexed = next.map((p, idx) => ({ ...p, order: idx }));
     setProjects(reindexed);
+    safeSaveLocal('portfolio_projects', reindexed);
     showToast(`Project moved ${direction}`);
     await persistProjectOrders(reindexed);
   };
@@ -1128,6 +1149,7 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
     next.splice(endIndex, 0, moved);
     const reindexed = next.map((p, idx) => ({ ...p, order: idx }));
     setProjects(reindexed);
+    safeSaveLocal('portfolio_projects', reindexed);
     showToast('Projects reordered successfully');
     await persistProjectOrders(reindexed);
   };
@@ -1138,7 +1160,14 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
     const existing = idx >= 0 ? services[idx] : undefined;
     if (!existing) return;
     const merged = { ...existing, ...updated };
-    setServices((prev) => prev.map((s) => (s.id === id ? merged : s)));
+    const nextList = services.map((s) => (s.id === id ? merged : s));
+    setServices(nextList);
+    safeSaveLocal('portfolio_services', nextList);
+
+    if (!isCloudAdminAuthorized) {
+      showToast('Service updated locally');
+      return;
+    }
 
     try {
       await ensureCollectionInCloud('services');
@@ -1152,7 +1181,15 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
   const addService = async (service: Omit<Service, 'id'>) => {
     const id = `srv-${Date.now()}`;
     const newService: Service = { ...service, id, order: services.length };
-    setServices((prev) => [...prev, newService]);
+    const nextList = [...services, newService];
+    setServices(nextList);
+    safeSaveLocal('portfolio_services', nextList);
+
+    if (!isCloudAdminAuthorized) {
+      showToast('Service added locally');
+      return;
+    }
+
     try {
       await ensureCollectionInCloud('services');
       await setDoc(doc(db, 'services', id), sanitizeServicePayload(newService, services.length));
@@ -1163,7 +1200,15 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
   };
 
   const deleteService = async (id: string) => {
-    setServices((prev) => prev.filter((s) => s.id !== id));
+    const remaining = services.filter((s) => s.id !== id);
+    setServices(remaining);
+    safeSaveLocal('portfolio_services', remaining);
+
+    if (!isCloudAdminAuthorized) {
+      showToast('Service removed locally');
+      return;
+    }
+
     try {
       await ensureCollectionInCloud('services');
       await deleteDoc(doc(db, 'services', id));
@@ -1179,7 +1224,14 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
     const existing = idx >= 0 ? skills[idx] : undefined;
     if (!existing) return;
     const merged = { ...existing, ...updated };
-    setSkills((prev) => prev.map((sk) => (sk.id === id ? merged : sk)));
+    const nextList = skills.map((sk) => (sk.id === id ? merged : sk));
+    setSkills(nextList);
+    safeSaveLocal('portfolio_skills', nextList);
+
+    if (!isCloudAdminAuthorized) {
+      showToast('Skill updated locally');
+      return;
+    }
 
     try {
       await ensureCollectionInCloud('skills');
@@ -1193,7 +1245,15 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
   const addSkill = async (skill: Omit<Skill, 'id'>) => {
     const id = `sk-${Date.now()}`;
     const newSkill: Skill = { ...skill, id, order: skills.length };
-    setSkills((prev) => [...prev, newSkill]);
+    const nextList = [...skills, newSkill];
+    setSkills(nextList);
+    safeSaveLocal('portfolio_skills', nextList);
+
+    if (!isCloudAdminAuthorized) {
+      showToast('Skill added locally');
+      return;
+    }
+
     try {
       await ensureCollectionInCloud('skills');
       await setDoc(doc(db, 'skills', id), sanitizeSkillPayload(newSkill, skills.length));
@@ -1204,7 +1264,15 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
   };
 
   const deleteSkill = async (id: string) => {
-    setSkills((prev) => prev.filter((sk) => sk.id !== id));
+    const remaining = skills.filter((sk) => sk.id !== id);
+    setSkills(remaining);
+    safeSaveLocal('portfolio_skills', remaining);
+
+    if (!isCloudAdminAuthorized) {
+      showToast('Skill deleted locally');
+      return;
+    }
+
     try {
       await ensureCollectionInCloud('skills');
       await deleteDoc(doc(db, 'skills', id));
@@ -1236,6 +1304,12 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
     };
     const updatedList = [newItem, ...galleryItems].map((g, idx) => ({ ...g, order: idx }));
     setGalleryItems(updatedList);
+    safeSaveLocal('portfolio_gallery', updatedList);
+
+    if (!isCloudAdminAuthorized) {
+      showToast(media.isVideo ? 'Video artifact saved locally' : 'Gallery item saved locally');
+      return;
+    }
 
     try {
       const batch = writeBatch(db);
@@ -1274,7 +1348,14 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
       }
     }
 
-    setGalleryItems((prev) => prev.map((g) => (g.id === id ? merged : g)));
+    const nextList = galleryItems.map((g) => (g.id === id ? merged : g));
+    setGalleryItems(nextList);
+    safeSaveLocal('portfolio_gallery', nextList);
+
+    if (!isCloudAdminAuthorized) {
+      showToast('Gallery item updated locally');
+      return;
+    }
 
     try {
       await ensureCollectionInCloud('gallery');
@@ -1298,10 +1379,11 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
   const deleteGalleryItem = async (id: string) => {
     const remaining = galleryItems.filter((g) => g.id !== id);
     setGalleryItems(remaining);
-    try {
-      localStorage.setItem('portfolio_gallery', JSON.stringify(remaining));
-    } catch {
-      // ignore
+    safeSaveLocal('portfolio_gallery', remaining);
+
+    if (!isCloudAdminAuthorized) {
+      showToast('Gallery item removed locally');
+      return;
     }
 
     try {
@@ -1314,6 +1396,7 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
   };
 
   const persistGalleryOrders = async (ordered: GalleryItem[]) => {
+    if (!isCloudAdminAuthorized) return;
     try {
       const batch = writeBatch(db);
       ordered.forEach((g, idx) => {
@@ -1352,6 +1435,7 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
     next.splice(targetIndex, 0, moved);
     const reindexed = next.map((g, idx) => ({ ...g, order: idx }));
     setGalleryItems(reindexed);
+    safeSaveLocal('portfolio_gallery', reindexed);
     showToast('Gallery item moved');
     await persistGalleryOrders(reindexed);
   };
@@ -1375,6 +1459,7 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
     next.splice(endIndex, 0, moved);
     const reindexed = next.map((g, idx) => ({ ...g, order: idx }));
     setGalleryItems(reindexed);
+    safeSaveLocal('portfolio_gallery', reindexed);
     showToast('Gallery items reordered successfully');
     await persistGalleryOrders(reindexed);
   };
@@ -1385,6 +1470,12 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
     const newItem: TimelineItem = { ...item, id, order: 0 };
     const updatedList = [newItem, ...timelineItems].map((t, idx) => ({ ...t, order: idx }));
     setTimelineItems(updatedList);
+    safeSaveLocal('portfolio_timeline', updatedList);
+
+    if (!isCloudAdminAuthorized) {
+      showToast('Timeline entry added locally');
+      return;
+    }
 
     try {
       const batch = writeBatch(db);
@@ -1408,7 +1499,14 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
     const existing = idx >= 0 ? timelineItems[idx] : undefined;
     if (!existing) return;
     const merged = { ...existing, ...updated };
-    setTimelineItems((prev) => prev.map((t) => (t.id === id ? merged : t)));
+    const nextList = timelineItems.map((t) => (t.id === id ? merged : t));
+    setTimelineItems(nextList);
+    safeSaveLocal('portfolio_timeline', nextList);
+
+    if (!isCloudAdminAuthorized) {
+      showToast('Timeline entry updated locally');
+      return;
+    }
 
     try {
       await ensureCollectionInCloud('timeline');
@@ -1420,7 +1518,15 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
   };
 
   const deleteTimelineItem = async (id: string) => {
-    setTimelineItems((prev) => prev.filter((t) => t.id !== id));
+    const remaining = timelineItems.filter((t) => t.id !== id);
+    setTimelineItems(remaining);
+    safeSaveLocal('portfolio_timeline', remaining);
+
+    if (!isCloudAdminAuthorized) {
+      showToast('Timeline entry removed locally');
+      return;
+    }
+
     try {
       await ensureCollectionInCloud('timeline');
       await deleteDoc(doc(db, 'timeline', id));
@@ -1430,7 +1536,7 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
     }
   };
 
-  // CONTACT SUBMISSIONS (Public create -> Admin read/update/delete)
+  // CONTACT SUBMISSIONS (Public create -> Cloud Admin read/update/delete)
   const submitContact = async (
     submission: Omit<ContactSubmission, 'id' | 'createdAt' | 'read'>
   ) => {
@@ -1451,6 +1557,7 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
 
   const markContactRead = async (id: string, read: boolean) => {
     setContactSubmissions((prev) => prev.map((c) => (c.id === id ? { ...c, read } : c)));
+    if (!isCloudAdminAuthorized) return;
     try {
       await updateDoc(doc(db, 'contactSubmissions', id), { read: Boolean(read) });
     } catch (error) {
@@ -1460,6 +1567,7 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
 
   const deleteContactSubmission = async (id: string) => {
     setContactSubmissions((prev) => prev.filter((c) => c.id !== id));
+    if (!isCloudAdminAuthorized) return;
     try {
       await deleteDoc(doc(db, 'contactSubmissions', id));
       showToast('Inquiry deleted permanently');
@@ -1471,6 +1579,7 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
   const clearAllContactSubmissions = async () => {
     const toDelete = [...contactSubmissions];
     setContactSubmissions([]);
+    if (!isCloudAdminAuthorized) return;
     try {
       const batch = writeBatch(db);
       toDelete.forEach((sub) => {
@@ -1483,8 +1592,100 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
     }
   };
 
-  // ADMIN GOOGLE AUTHENTICATION
-  const adminLoginWithGoogle = async (): Promise<AuthResult> => {
+  // ==========================================================================
+  // PASSCODE ADMIN AUTHENTICATION (Server-Verified Bearer Token in Memory)
+  // ==========================================================================
+  const parseJsonSafely = async (
+    res: Response
+  ): Promise<{ ok?: boolean; token?: string; error?: string } | null> => {
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      return null;
+    }
+    try {
+      return (await res.json()) as { ok?: boolean; token?: string; error?: string };
+    } catch {
+      return null;
+    }
+  };
+
+  const adminLoginWithPasscode = async (passcode: string): Promise<AuthResult> => {
+    const trimmed = passcode.trim();
+    if (!trimmed) {
+      return { ok: false, error: 'Please enter the administrator passcode.' };
+    }
+    try {
+      const res = await fetch('/api/admin/login', {
+        method: 'POST',
+        cache: 'no-store',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ passcode: trimmed }),
+      });
+      const data = await parseJsonSafely(res);
+      if (!data) {
+        return {
+          ok: false,
+          error: `Authentication service unavailable (HTTP ${res.status}).`,
+        };
+      }
+      if (!res.ok || !data.token) {
+        if (res.status === 409) {
+          setAdminAuthMode('claim');
+        }
+        return { ok: false, error: data.error || 'Invalid administrator passcode.' };
+      }
+      setAdminToken(data.token);
+      setAdminAuthMode('login');
+      showToast('Admin Portal unlocked');
+      return { ok: true };
+    } catch {
+      return { ok: false, error: 'Unable to reach authentication server. Please try again.' };
+    }
+  };
+
+  const adminClaimPasscode = async (passcode: string): Promise<AuthResult> => {
+    const trimmed = passcode.trim();
+    if (!trimmed) {
+      return { ok: false, error: 'Please enter an administrator passcode.' };
+    }
+    try {
+      const res = await fetch('/api/admin/claim', {
+        method: 'POST',
+        cache: 'no-store',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ passcode: trimmed }),
+      });
+      const data = await parseJsonSafely(res);
+      if (!data) {
+        return {
+          ok: false,
+          error: `Authentication service unavailable (HTTP ${res.status}).`,
+        };
+      }
+      if (res.status === 403) {
+        // Environment passcode or claimed credential became active after initial status check
+        setAdminAuthMode('login');
+        return adminLoginWithPasscode(trimmed);
+      }
+      if (!res.ok || !data.token) {
+        return { ok: false, error: data.error || 'Failed to set admin passcode.' };
+      }
+      setAdminToken(data.token);
+      setAdminAuthMode('login');
+      showToast('Admin passcode set & portal unlocked');
+      return { ok: true };
+    } catch {
+      return { ok: false, error: 'Unable to reach authentication server. Please try again.' };
+    }
+  };
+
+  const adminLogout = async () => {
+    setAdminToken(null);
+    showToast('Locked Admin Portal');
+  };
+
+  // OPTIONAL CLOUD SYNC GOOGLE AUTH (Inside already-unlocked Admin Portal)
+  const connectCloudSync = async (): Promise<AuthResult> => {
     try {
       const credential = await signInWithPopup(auth, googleProvider);
       const user = credential.user;
@@ -1494,24 +1695,24 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
         await signOut(auth);
         return {
           ok: false,
-          error: `Access denied for ${user.email || 'this account'}. Only the portfolio owner (${ADMIN_EMAIL}) is authorized.`,
+          error: `Only the portfolio owner (${ADMIN_EMAIL}) can authorize Firestore cloud writes.`,
         };
       }
 
       migrationAttemptedRef.current = false;
-      showToast('Signed in as Admin • Cloud sync active');
+      showToast('Cloud Sync connected • Changes sync across Live & AI Studio');
       return { ok: true };
     } catch (error) {
-      const msg = error instanceof Error ? error.message : 'Google sign-in failed.';
+      const msg = error instanceof Error ? error.message : 'Google Cloud Sync connection failed.';
       return { ok: false, error: msg };
     }
   };
 
-  const adminLogout = async () => {
+  const disconnectCloudSync = async () => {
     try {
       await signOut(auth);
       migrationAttemptedRef.current = false;
-      showToast('Signed out of Admin');
+      showToast('Cloud Sync disconnected');
     } catch (error) {
       console.error('Sign out error:', error);
     }
@@ -1529,6 +1730,25 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
   const resetAllToDefault = async () => {
     if (!isAdminAuthenticated) {
       showToast('Admin authorization required');
+      return;
+    }
+
+    setSiteInfo(initialSiteInfo);
+    setProjects(initialProjects);
+    setServices(initialServices);
+    setSkills(initialSkills);
+    setGalleryItems(initialGalleryItems);
+    setTimelineItems(initialTimeline);
+
+    safeSaveLocal('portfolio_site_info', initialSiteInfo);
+    safeSaveLocal('portfolio_projects', initialProjects);
+    safeSaveLocal('portfolio_services', initialServices);
+    safeSaveLocal('portfolio_skills', initialSkills);
+    safeSaveLocal('portfolio_gallery', initialGalleryItems);
+    safeSaveLocal('portfolio_timeline', initialTimeline);
+
+    if (!isCloudAdminAuthorized) {
+      showToast('Portfolio data reset locally');
       return;
     }
 
@@ -1566,25 +1786,6 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
       );
 
       await batch.commit();
-
-      setSiteInfo(initialSiteInfo);
-      setProjects(initialProjects);
-      setServices(initialServices);
-      setSkills(initialSkills);
-      setGalleryItems(initialGalleryItems);
-      setTimelineItems(initialTimeline);
-
-      try {
-        localStorage.setItem('portfolio_site_info', JSON.stringify(initialSiteInfo));
-        localStorage.setItem('portfolio_projects', JSON.stringify(initialProjects));
-        localStorage.setItem('portfolio_services', JSON.stringify(initialServices));
-        localStorage.setItem('portfolio_skills', JSON.stringify(initialSkills));
-        localStorage.setItem('portfolio_gallery', JSON.stringify(initialGalleryItems));
-        localStorage.setItem('portfolio_timeline', JSON.stringify(initialTimeline));
-      } catch {
-        // ignore
-      }
-
       showToast('All portfolio data reset to showcase defaults');
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, 'resetAllToDefault');
@@ -1629,9 +1830,14 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
         clearAllContactSubmissions,
         isAdminAuthenticated,
         isAuthReady,
-        authUser,
-        adminLoginWithGoogle,
+        adminAuthMode,
+        adminLoginWithPasscode,
+        adminClaimPasscode,
         adminLogout,
+        isCloudAdminAuthorized,
+        authUser,
+        connectCloudSync,
+        disconnectCloudSync,
         syncLocalToCloud,
         localUnsyncedCount,
         isSyncingCloud,

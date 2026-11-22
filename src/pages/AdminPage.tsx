@@ -3,6 +3,7 @@ import { usePortfolio } from '../context/PortfolioContext';
 import { Project, GalleryItem, TimelineItem, Skill, Service } from '../types';
 import {
   Shield,
+  Lock,
   LogOut,
   FolderGit2,
   Image as ImageIcon,
@@ -13,6 +14,8 @@ import {
   Trash2,
   Edit2,
   CheckCircle2,
+  Eye,
+  EyeOff,
   ExternalLink,
   RotateCcw,
   Sparkles,
@@ -40,9 +43,13 @@ export const AdminPage: React.FC = () => {
   const {
     isAdminAuthenticated,
     isAuthReady,
-    authUser,
-    adminLoginWithGoogle,
+    adminAuthMode,
+    adminLoginWithPasscode,
+    adminClaimPasscode,
     adminLogout,
+    isCloudAdminAuthorized,
+    authUser,
+    connectCloudSync,
     syncLocalToCloud,
     localUnsyncedCount,
     isSyncingCloud,
@@ -79,8 +86,11 @@ export const AdminPage: React.FC = () => {
   } = usePortfolio();
 
   // Authentication State
+  const [passwordInput, setPasswordInput] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [isSigningIn, setIsSigningIn] = useState(false);
+  const [isConnectingCloud, setIsConnectingCloud] = useState(false);
 
   // Drag and drop reordering states
   const [draggedProjectIndex, setDraggedProjectIndex] = useState<number | null>(null);
@@ -154,17 +164,38 @@ export const AdminPage: React.FC = () => {
   // Selected Message for Inspector
   const [selectedSubmissionId, setSelectedSubmissionId] = useState<string | null>(null);
 
-  // Authentication Handler (Firebase Google Sign-In)
-  const handleGoogleLogin = async () => {
+  // Passcode Authentication Handler (Server-verified)
+  const handlePasscodeSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanPasscode = passwordInput.trim();
+    if (!cleanPasscode) return;
     setAuthError(null);
     setIsSigningIn(true);
     try {
-      const result = await adminLoginWithGoogle();
+      const result =
+        adminAuthMode === 'claim'
+          ? await adminClaimPasscode(cleanPasscode)
+          : await adminLoginWithPasscode(cleanPasscode);
+
       if (!result.ok) {
         setAuthError(result.error || 'Authentication failed. Please try again.');
+      } else {
+        setPasswordInput('');
       }
     } finally {
       setIsSigningIn(false);
+    }
+  };
+
+  const handleConnectCloudSync = async () => {
+    setIsConnectingCloud(true);
+    try {
+      const result = await connectCloudSync();
+      if (!result.ok && result.error) {
+        showToast(result.error);
+      }
+    } finally {
+      setIsConnectingCloud(false);
     }
   };
 
@@ -282,17 +313,18 @@ export const AdminPage: React.FC = () => {
     setNewSkillName('');
   };
 
-  // Unauthenticated View: Google Sign-In Screen
-  if (!isAuthReady) {
+  // Unauthenticated View: Passcode Login Screen
+  if (!isAuthReady || adminAuthMode === 'loading') {
     return (
       <div className="max-w-md mx-auto px-4 py-24 text-center">
         <div className="w-10 h-10 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-        <p className="text-xs text-slate-400">Verifying administrator session...</p>
+        <p className="text-xs text-slate-400">Checking administrator portal...</p>
       </div>
     );
   }
 
   if (!isAdminAuthenticated) {
+    const isClaimMode = adminAuthMode === 'claim';
     return (
       <div className="max-w-md mx-auto px-4 py-16 sm:py-24">
         <div className="relative rounded-2xl p-[1px] bg-gradient-to-b from-blue-500/50 via-cyan-400/30 to-purple-600/50 shadow-2xl shadow-blue-950/90">
@@ -310,37 +342,81 @@ export const AdminPage: React.FC = () => {
 
             <div className="space-y-1.5">
               <h1 className="text-2xl font-bold text-white tracking-tight">
-                Admin Control Portal
+                {isClaimMode ? 'Set Admin Passcode' : 'Admin Control Portal'}
               </h1>
               <p className="text-xs text-slate-400 leading-relaxed">
-                Sign in with the portfolio owner Google account to manage projects, gallery media, and client inquiries across all devices in real time.
+                {isClaimMode
+                  ? 'First-run setup: enter your desired administrator passcode to secure and open the Admin Portal.'
+                  : 'Enter your administrator passcode to manage projects, gallery artifacts, messages, and portfolio details.'}
               </p>
             </div>
 
-            {authError && (
-              <div className="p-3 rounded-xl bg-rose-950/50 border border-rose-500/40 text-left flex items-start gap-2.5">
-                <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-                <p className="text-[11px] text-rose-300 leading-relaxed">{authError}</p>
+            <form onSubmit={handlePasscodeSubmit} className="space-y-4 text-left">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                  {isClaimMode ? 'Choose Administrator Passcode' : 'Administrator Passcode'}
+                </label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    autoFocus
+                    autoComplete={isClaimMode ? 'new-password' : 'current-password'}
+                    minLength={isClaimMode ? 4 : 1}
+                    value={passwordInput}
+                    onChange={(e) => {
+                      setPasswordInput(e.target.value);
+                      setAuthError(null);
+                    }}
+                    placeholder={
+                      isClaimMode
+                        ? 'Enter new passcode (min 4 characters)'
+                        : 'Enter administrator passcode'
+                    }
+                    className="w-full pl-10 pr-11 py-2.5 rounded-xl bg-[#050811] border border-blue-900/50 text-white text-xs placeholder:text-slate-500 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-cyan-400 focus:outline-none transition-colors cursor-pointer"
+                    aria-label={showPassword ? 'Hide passcode' : 'Show passcode'}
+                    title={showPassword ? 'Hide passcode' : 'Show passcode'}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+                {authError && (
+                  <p className="text-[11px] text-rose-400 mt-1.5 font-medium flex items-center gap-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                    <span>{authError}</span>
+                  </p>
+                )}
               </div>
-            )}
 
-            <button
-              type="button"
-              onClick={handleGoogleLogin}
-              disabled={isSigningIn}
-              className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 via-cyan-500 to-blue-600 text-white font-bold text-xs shadow-lg shadow-blue-600/30 hover:shadow-blue-500/50 flex items-center justify-center gap-2.5 cursor-pointer transition-all disabled:opacity-60"
-            >
-              {isSigningIn ? (
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <Shield className="w-4 h-4" />
-              )}
-              <span>{isSigningIn ? 'Signing in...' : 'Sign in with Google'}</span>
-            </button>
-
-            <p className="text-[11px] text-slate-500">
-              Cloud-secured via Firebase Authentication &amp; Firestore
-            </p>
+              <button
+                type="submit"
+                disabled={isSigningIn}
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 via-cyan-500 to-blue-600 text-white font-bold text-xs shadow-lg shadow-blue-600/30 hover:shadow-blue-500/50 flex items-center justify-center gap-2 cursor-pointer transition-all disabled:opacity-60"
+              >
+                {isSigningIn ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Shield className="w-4 h-4" />
+                )}
+                <span>
+                  {isSigningIn
+                    ? 'Verifying...'
+                    : isClaimMode
+                    ? 'Initialize & Open Portal'
+                    : 'Unlock Admin Portal'}
+                </span>
+              </button>
+            </form>
           </div>
         </div>
       </div>
@@ -367,32 +443,51 @@ export const AdminPage: React.FC = () => {
               Admin Management Portal
             </h1>
             <p className="text-xs text-slate-400">
-              Signed in as {authUser?.email || 'M Abdullah Azam'} • Live Cloud Sync Active
+              {isCloudAdminAuthorized
+                ? `M Abdullah Azam • Cloud Sync Active (${authUser?.email || 'Connected'})`
+                : 'M Abdullah Azam • Passcode Unlocked'}
             </p>
           </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          {localUnsyncedCount > 0 && (
+          {!isCloudAdminAuthorized ? (
             <button
               type="button"
-              onClick={async () => {
-                const count = await syncLocalToCloud();
-                if (count > 0) {
-                  showToast(`Synced ${count} browser item(s) to shared cloud database`);
-                }
-              }}
-              disabled={isSyncingCloud}
-              className="px-3.5 py-2 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-400/40 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
-              title="Push locally saved items from this browser into the shared cloud database"
+              onClick={handleConnectCloudSync}
+              disabled={isConnectingCloud}
+              className="px-3.5 py-2 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-400/40 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-60"
+              title="Connect Google account to sync portfolio changes to Firestore across Live and AI Studio"
             >
-              {isSyncingCloud ? (
+              {isConnectingCloud ? (
                 <RefreshCw className="w-3.5 h-3.5 animate-spin" />
               ) : (
                 <CloudUpload className="w-3.5 h-3.5" />
               )}
-              <span>Sync Browser Changes ({localUnsyncedCount})</span>
+              <span>Connect Cloud Sync</span>
             </button>
+          ) : (
+            localUnsyncedCount > 0 && (
+              <button
+                type="button"
+                onClick={async () => {
+                  const count = await syncLocalToCloud();
+                  if (count > 0) {
+                    showToast(`Synced ${count} browser item(s) to shared cloud database`);
+                  }
+                }}
+                disabled={isSyncingCloud}
+                className="px-3.5 py-2 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-400/40 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
+                title="Push locally saved items from this browser into the shared cloud database"
+              >
+                {isSyncingCloud ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <CloudUpload className="w-3.5 h-3.5" />
+                )}
+                <span>Sync Browser Changes ({localUnsyncedCount})</span>
+              </button>
+            )
           )}
 
           <button
@@ -409,7 +504,7 @@ export const AdminPage: React.FC = () => {
             className="px-4 py-2 rounded-xl bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
           >
             <LogOut className="w-3.5 h-3.5" />
-            <span>Sign Out</span>
+            <span>Lock Portal</span>
           </button>
         </div>
       </div>
@@ -800,7 +895,7 @@ export const AdminPage: React.FC = () => {
                         </td>
                         <td className="p-4">
                           <div className="flex flex-wrap gap-1">
-                            {p.technologies.slice(0, 3).map((t, tidx) => (
+                            {(p.technologies || []).slice(0, 3).map((t, tidx) => (
                               <span
                                 key={tidx}
                                 className="px-1.5 py-0.5 rounded bg-slate-900 text-slate-300 text-[10px]"
