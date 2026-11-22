@@ -20,3 +20,8 @@
 10. **Unbounded Array Injection**: Admin sends `technologies` with 50 items (> 20 limit). Rejected by `data.technologies.size() <= 20`.
 11. **Wildcard Collection Write**: Attacker writes to `/arbitraryCollection/doc1`. Rejected by default-deny `match /{document=**}`.
 12. **Type Confusion on Inquiry Update**: Attacker sends `read: "yes"` instead of `bool`. Rejected by `isValidContactSubmission(incoming())`.
+13. **Secret Passcode Hash Exfiltration**: Attacker calls `getDoc('/adminAuth/passcode')` or `getDocs('/adminAuth')`. Rejected unconditionally by `allow read: if false;`.
+14. **Passcode Re-Claim Overwrite**: Unauthenticated client attempts `setDoc('/adminAuth/passcode', ...)` after initialization. Rejected by `!exists(.../adminAuth/passcode)` and `allow update: if isAdmin()`.
+15. **Non-Atomic Claim Split**: Client tries creating `/adminAuthStatus/meta` without `/adminAuth/passcode` in the same batch. Rejected by `existsAfter(...)`.
+16. **Passcode Verification Mismatch**: Client calls `getDoc('/adminVerifications/<wrong64hex>')`. Rejected with `PERMISSION_DENIED` by Firestore server-side comparison against `/adminAuth/passcode`.
+

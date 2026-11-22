@@ -3,6 +3,7 @@ import {
   collection,
   doc,
   getDoc,
+  getDocFromServer,
   getDocs,
   setDoc,
   updateDoc,
@@ -45,6 +46,7 @@ import {
   ADMIN_EMAIL,
   OperationType,
   handleFirestoreError,
+  derivePasscodeVerifierHash,
 } from '../firebase';
 
 interface AuthResult {
@@ -53,6 +55,7 @@ interface AuthResult {
 }
 
 type AdminAuthMode = 'loading' | 'login' | 'claim';
+type AdminAuthProvider = 'server' | 'firestore';
 
 interface PortfolioContextType {
   activePage: PageTab;
@@ -94,6 +97,7 @@ interface PortfolioContextType {
   isAdminBackendAvailable: boolean | null;
   adminLoginWithPasscode: (passcode: string) => Promise<AuthResult>;
   adminClaimPasscode: (passcode: string) => Promise<AuthResult>;
+  resetCloudPasscode: () => Promise<AuthResult>;
   adminLogout: () => Promise<void>;
   isCloudAdminAuthorized: boolean;
   authUser: User | null;
@@ -523,6 +527,7 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
   // Admin Passcode Session State (token stored strictly in React memory)
   const [adminToken, setAdminToken] = useState<string | null>(null);
   const [adminAuthMode, setAdminAuthMode] = useState<AdminAuthMode>('loading');
+  const [adminAuthProvider, setAdminAuthProvider] = useState<AdminAuthProvider>('server');
   const [isAdminBackendAvailable, setIsAdminBackendAvailable] = useState<boolean | null>(null);
   const [isAuthReady, setIsAuthReady] = useState<boolean>(false);
   const isAdminAuthenticated = Boolean(adminToken);
@@ -565,12 +570,25 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
     }
   }, []);
 
-  // 1. Check Server Admin Auth Mode (/api/admin/status) on mount & when opening Admin tab
+  // 1. Check Server Admin Auth Mode (/api/admin/status) with Firestore fallback for static hosts
   useEffect(() => {
     if (isAdminAuthenticated) return;
     let active = true;
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 15000);
+    const timer = setTimeout(() => controller.abort(), 8000);
+
+    const resolveFirestoreAuthMode = async () => {
+      try {
+        const metaSnap = await getDocFromServer(doc(db, 'adminAuthStatus', 'meta'));
+        if (!active) return;
+        setAdminAuthProvider('firestore');
+        setAdminAuthMode(metaSnap.exists() ? 'login' : 'claim');
+      } catch {
+        if (!active) return;
+        setAdminAuthProvider('firestore');
+        setAdminAuthMode('login');
+      }
+    };
 
     const checkStatus = async () => {
       try {
@@ -582,15 +600,16 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
         if (res.ok && contentType.includes('application/json') && active) {
           const data = (await res.json()) as { mode?: 'login' | 'claim' };
           setIsAdminBackendAvailable(true);
+          setAdminAuthProvider('server');
           setAdminAuthMode(data.mode === 'claim' ? 'claim' : 'login');
         } else if (active) {
           setIsAdminBackendAvailable(false);
-          setAdminAuthMode('login');
+          await resolveFirestoreAuthMode();
         }
       } catch {
         if (active) {
           setIsAdminBackendAvailable(false);
-          setAdminAuthMode('login');
+          await resolveFirestoreAuthMode();
         }
       } finally {
         clearTimeout(timer);
@@ -1603,7 +1622,7 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
   };
 
   // ==========================================================================
-  // PASSCODE ADMIN AUTHENTICATION (Server-Verified Bearer Token in Memory)
+  // PASSCODE ADMIN AUTHENTICATION (Express Server + Firestore Cloud Verifier)
   // ==========================================================================
   const parseJsonSafely = async (
     res: Response
@@ -1619,10 +1638,70 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
     }
   };
 
+  const firestoreClaimPasscode = async (trimmed: string): Promise<AuthResult> => {
+    if (trimmed.length < 4 || trimmed.length > 128) {
+      return { ok: false, error: 'Passcode must be between 4 and 128 characters.' };
+    }
+    try {
+      const verifierHash = await derivePasscodeVerifierHash(trimmed);
+      const batch = writeBatch(db);
+      batch.set(doc(db, 'adminAuth', 'passcode'), {
+        id: 'passcode',
+        verifierHash,
+        updatedAt: new Date().toISOString().slice(0, 64),
+      });
+      batch.set(doc(db, 'adminAuthStatus', 'meta'), {
+        id: 'meta',
+        initialized: true,
+      });
+      await batch.commit();
+      setAdminToken('cloud-verified');
+      setAdminAuthProvider('firestore');
+      setAdminAuthMode('login');
+      showToast('Admin passcode set & portal unlocked');
+      return { ok: true };
+    } catch (err) {
+      const code = (err as { code?: string })?.code || '';
+      if (code === 'permission-denied') {
+        setAdminAuthProvider('firestore');
+        setAdminAuthMode('login');
+        return firestoreLoginWithPasscode(trimmed);
+      }
+      return { ok: false, error: 'Unable to initialize cloud passcode. Please try again.' };
+    }
+  };
+
+  const firestoreLoginWithPasscode = async (trimmed: string): Promise<AuthResult> => {
+    try {
+      const metaSnap = await getDocFromServer(doc(db, 'adminAuthStatus', 'meta'));
+      if (!metaSnap.exists()) {
+        setAdminAuthProvider('firestore');
+        setAdminAuthMode('claim');
+        return firestoreClaimPasscode(trimmed);
+      }
+      const verifierHash = await derivePasscodeVerifierHash(trimmed);
+      await getDocFromServer(doc(db, 'adminVerifications', verifierHash));
+      setAdminToken('cloud-verified');
+      setAdminAuthProvider('firestore');
+      setAdminAuthMode('login');
+      showToast('Admin Portal unlocked');
+      return { ok: true };
+    } catch (err) {
+      const code = (err as { code?: string })?.code || '';
+      if (code === 'permission-denied') {
+        return { ok: false, error: 'Invalid administrator passcode. Please try again.' };
+      }
+      return { ok: false, error: 'Unable to verify passcode right now. Please try again.' };
+    }
+  };
+
   const adminLoginWithPasscode = async (passcode: string): Promise<AuthResult> => {
     const trimmed = passcode.trim();
     if (!trimmed) {
       return { ok: false, error: 'Please enter the administrator passcode.' };
+    }
+    if (adminAuthProvider === 'firestore') {
+      return firestoreLoginWithPasscode(trimmed);
     }
     try {
       const res = await fetch('/api/admin/login', {
@@ -1634,10 +1713,8 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
       const data = await parseJsonSafely(res);
       if (!data) {
         setIsAdminBackendAvailable(false);
-        return {
-          ok: false,
-          error: `Admin server endpoint did not return JSON (HTTP ${res.status}). If using the live/shared page, please republish the app so the backend server updates.`,
-        };
+        setAdminAuthProvider('firestore');
+        return firestoreLoginWithPasscode(trimmed);
       }
       setIsAdminBackendAvailable(true);
       if (!res.ok || !data.token) {
@@ -1652,7 +1729,9 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
       showToast('Admin Portal unlocked');
       return { ok: true };
     } catch {
-      return { ok: false, error: 'Unable to reach authentication server. Please try again.' };
+      setIsAdminBackendAvailable(false);
+      setAdminAuthProvider('firestore');
+      return firestoreLoginWithPasscode(trimmed);
     }
   };
 
@@ -1660,6 +1739,9 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
     const trimmed = passcode.trim();
     if (!trimmed) {
       return { ok: false, error: 'Please enter an administrator passcode.' };
+    }
+    if (adminAuthProvider === 'firestore') {
+      return firestoreClaimPasscode(trimmed);
     }
     try {
       const res = await fetch('/api/admin/claim', {
@@ -1671,14 +1753,11 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
       const data = await parseJsonSafely(res);
       if (!data) {
         setIsAdminBackendAvailable(false);
-        return {
-          ok: false,
-          error: `Admin server endpoint did not return JSON (HTTP ${res.status}). If using the live/shared page, please republish the app so the backend server updates.`,
-        };
+        setAdminAuthProvider('firestore');
+        return firestoreClaimPasscode(trimmed);
       }
       setIsAdminBackendAvailable(true);
       if (res.status === 403) {
-        // Environment passcode or claimed credential became active after initial status check
         setAdminAuthMode('login');
         return adminLoginWithPasscode(trimmed);
       }
@@ -1690,7 +1769,35 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
       showToast('Admin passcode set & portal unlocked');
       return { ok: true };
     } catch {
-      return { ok: false, error: 'Unable to reach authentication server. Please try again.' };
+      setIsAdminBackendAvailable(false);
+      setAdminAuthProvider('firestore');
+      return firestoreClaimPasscode(trimmed);
+    }
+  };
+
+  const resetCloudPasscode = async (): Promise<AuthResult> => {
+    try {
+      const credential = await signInWithPopup(auth, googleProvider);
+      const user = credential.user;
+      const email = user.email?.toLowerCase() || '';
+      if (email !== ADMIN_EMAIL || !user.emailVerified) {
+        await signOut(auth);
+        return {
+          ok: false,
+          error: `Only the portfolio owner (${ADMIN_EMAIL}) can reset the live passcode.`,
+        };
+      }
+      const batch = writeBatch(db);
+      batch.delete(doc(db, 'adminAuth', 'passcode'));
+      batch.delete(doc(db, 'adminAuthStatus', 'meta'));
+      await batch.commit();
+      setAdminAuthProvider('firestore');
+      setAdminAuthMode('claim');
+      showToast('Live passcode reset — enter your new passcode');
+      return { ok: true };
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Unable to reset live passcode.';
+      return { ok: false, error: msg };
     }
   };
 
@@ -1849,6 +1956,7 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
         isAdminBackendAvailable,
         adminLoginWithPasscode,
         adminClaimPasscode,
+        resetCloudPasscode,
         adminLogout,
         isCloudAdminAuthorized,
         authUser,

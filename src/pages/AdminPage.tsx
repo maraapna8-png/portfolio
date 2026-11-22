@@ -47,6 +47,7 @@ export const AdminPage: React.FC = () => {
     isAdminBackendAvailable,
     adminLoginWithPasscode,
     adminClaimPasscode,
+    resetCloudPasscode,
     adminLogout,
     isCloudAdminAuthorized,
     authUser,
@@ -354,15 +355,6 @@ export const AdminPage: React.FC = () => {
               </p>
             </div>
 
-            {isAdminBackendAvailable === false && authError && (
-              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-left text-[11px] text-amber-200 leading-relaxed flex items-start gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                <span>
-                  This live URL is serving without an active backend server (<code className="text-amber-100">/api/admin</code>). Republish the Shared App in AI Studio with <code className="text-amber-100">ADMIN_PASSCODE</code> set in Secrets.
-                </span>
-              </div>
-            )}
-
             <form onSubmit={handlePasscodeSubmit} className="space-y-4 text-left">
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1.5">
@@ -429,6 +421,30 @@ export const AdminPage: React.FC = () => {
                     : 'Unlock Admin Portal'}
                 </span>
               </button>
+
+              {isAdminBackendAvailable === false && authError && !isClaimMode && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setAuthError(null);
+                    setIsSigningIn(true);
+                    try {
+                      const res = await resetCloudPasscode();
+                      if (!res.ok && res.error) {
+                        setAuthError(res.error);
+                      } else {
+                        setPasswordInput('');
+                      }
+                    } finally {
+                      setIsSigningIn(false);
+                    }
+                  }}
+                  disabled={isSigningIn}
+                  className="w-full text-center text-[11px] text-cyan-400 hover:text-cyan-300 underline-offset-2 hover:underline cursor-pointer pt-1"
+                >
+                  Forgot passcode? Reset with owner Google account
+                </button>
+              )}
             </form>
           </div>
         </div>

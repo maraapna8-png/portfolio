@@ -131,9 +131,51 @@
         "read": { "type": "boolean" }
       },
       "required": ["id", "fullName", "email", "phone", "serviceRequired", "projectBudget", "projectDetails", "message", "createdAt", "read"]
+    },
+    "AdminAuth": {
+      "title": "AdminAuth",
+      "description": "Server-only admin passcode verifier hash (write-once atomic claim or admin update; never readable by clients).",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "verifierHash": { "type": "string", "minLength": 64, "maxLength": 64, "pattern": "^[0-9a-f]{64}$" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "verifierHash", "updatedAt"]
+    },
+    "AdminAuthStatus": {
+      "title": "AdminAuthStatus",
+      "description": "Non-secret boolean flag indicating whether cloud admin passcode has been initialized.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "initialized": { "type": "boolean" }
+      },
+      "required": ["id", "initialized"]
+    },
+    "AdminVerification": {
+      "title": "AdminVerification",
+      "description": "Virtual blind verification endpoint checked via Firestore get() security rules; stores no documents.",
+      "type": "object",
+      "properties": {
+        "candidateHash": { "type": "string", "minLength": 64, "maxLength": 64, "pattern": "^[0-9a-f]{64}$" }
+      },
+      "required": ["candidateHash"]
     }
   },
   "firestore": {
+    "/adminAuth/{docId}": {
+      "schema": { "$ref": "#/entities/AdminAuth" },
+      "description": "Never readable by clients; stores PBKDF2-SHA256 admin passcode verifier hash."
+    },
+    "/adminAuthStatus/{docId}": {
+      "schema": { "$ref": "#/entities/AdminAuthStatus" },
+      "description": "Publicly readable non-secret initialization flag for meta doc."
+    },
+    "/adminVerifications/{candidateHash}": {
+      "schema": { "$ref": "#/entities/AdminVerification" },
+      "description": "Blind server-side passcode verifier checked purely in Firestore rules."
+    },
     "/siteConfig/{docId}": {
       "schema": { "$ref": "#/entities/SiteInfo" },
       "description": "Portfolio global info document (docId = main)."

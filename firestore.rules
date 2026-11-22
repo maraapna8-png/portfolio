@@ -186,6 +186,23 @@ service cloud.firestore {
         && data.read is bool;
     }
 
+    function isValidAdminAuth(data) {
+      return data.keys().hasAll(['id', 'verifierHash', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'verifierHash', 'updatedAt'])
+        && data.id == 'passcode'
+        && isBoundedString(data.verifierHash, 64, 64)
+        && data.verifierHash.matches('^[0-9a-f]{64}$')
+        && isBoundedString(data.updatedAt, 1, 64);
+    }
+
+    function isValidAdminAuthStatus(data) {
+      return data.keys().hasAll(['id', 'initialized'])
+        && data.keys().hasOnly(['id', 'initialized'])
+        && data.id == 'meta'
+        && data.initialized is bool
+        && data.initialized == true;
+    }
+
     // =========================================================================
     // COLLECTION MATCH BLOCKS
     // =========================================================================
@@ -193,6 +210,46 @@ service cloud.firestore {
     // Startup Connectivity Check
     match /test/connection {
       allow get: if true;
+    }
+
+    // Admin Passcode Hash (Never readable from clients; one-time atomic claim or Admin update)
+    match /adminAuth/{docId} {
+      allow read: if false;
+      allow create: if isValidId(docId)
+        && docId == 'passcode'
+        && isValidAdminAuth(incoming())
+        && !exists(/databases/$(database)/documents/adminAuth/passcode)
+        && existsAfter(/databases/$(database)/documents/adminAuthStatus/meta);
+      allow update: if isValidAdminAuth(incoming())
+        && isAdmin()
+        && isValidId(docId)
+        && docId == 'passcode'
+        && incoming().id == existing().id
+        && incoming().diff(existing()).affectedKeys().hasOnly(['verifierHash', 'updatedAt']);
+      allow delete: if isAdmin() && isValidId(docId);
+    }
+
+    // Non-secret Admin Passcode Initialization Flag
+    match /adminAuthStatus/{docId} {
+      allow get: if isValidId(docId) && docId == 'meta';
+      allow list: if false;
+      allow create: if isValidId(docId)
+        && docId == 'meta'
+        && isValidAdminAuthStatus(incoming())
+        && !exists(/databases/$(database)/documents/adminAuthStatus/meta)
+        && !exists(/databases/$(database)/documents/adminAuth/passcode)
+        && existsAfter(/databases/$(database)/documents/adminAuth/passcode);
+      allow update: if false;
+      allow delete: if isAdmin() && isValidId(docId);
+    }
+
+    // Blind Server-Side Passcode Verification (Returns PERMISSION_DENIED on mismatch)
+    match /adminVerifications/{candidateHash} {
+      allow get: if isValidId(candidateHash)
+        && candidateHash.matches('^[0-9a-f]{64}$')
+        && exists(/databases/$(database)/documents/adminAuth/passcode)
+        && candidateHash == get(/databases/$(database)/documents/adminAuth/passcode).data.verifierHash;
+      allow list, create, update, delete: if false;
     }
 
     // Portfolio Site Configuration (Public Read, Admin Write)
