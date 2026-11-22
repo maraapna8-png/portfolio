@@ -91,6 +91,7 @@ interface PortfolioContextType {
   isAdminAuthenticated: boolean;
   isAuthReady: boolean;
   adminAuthMode: AdminAuthMode;
+  isAdminBackendAvailable: boolean | null;
   adminLoginWithPasscode: (passcode: string) => Promise<AuthResult>;
   adminClaimPasscode: (passcode: string) => Promise<AuthResult>;
   adminLogout: () => Promise<void>;
@@ -522,6 +523,7 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
   // Admin Passcode Session State (token stored strictly in React memory)
   const [adminToken, setAdminToken] = useState<string | null>(null);
   const [adminAuthMode, setAdminAuthMode] = useState<AdminAuthMode>('loading');
+  const [isAdminBackendAvailable, setIsAdminBackendAvailable] = useState<boolean | null>(null);
   const [isAuthReady, setIsAuthReady] = useState<boolean>(false);
   const isAdminAuthenticated = Boolean(adminToken);
 
@@ -579,12 +581,17 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
         const contentType = res.headers.get('content-type') || '';
         if (res.ok && contentType.includes('application/json') && active) {
           const data = (await res.json()) as { mode?: 'login' | 'claim' };
+          setIsAdminBackendAvailable(true);
           setAdminAuthMode(data.mode === 'claim' ? 'claim' : 'login');
         } else if (active) {
+          setIsAdminBackendAvailable(false);
           setAdminAuthMode('login');
         }
       } catch {
-        if (active) setAdminAuthMode('login');
+        if (active) {
+          setIsAdminBackendAvailable(false);
+          setAdminAuthMode('login');
+        }
       } finally {
         clearTimeout(timer);
         if (active) setIsAuthReady(true);
@@ -1626,14 +1633,17 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
       });
       const data = await parseJsonSafely(res);
       if (!data) {
+        setIsAdminBackendAvailable(false);
         return {
           ok: false,
           error: `Admin server endpoint did not return JSON (HTTP ${res.status}). If using the live/shared page, please republish the app so the backend server updates.`,
         };
       }
+      setIsAdminBackendAvailable(true);
       if (!res.ok || !data.token) {
         if (res.status === 409) {
           setAdminAuthMode('claim');
+          return adminClaimPasscode(trimmed);
         }
         return { ok: false, error: data.error || 'Invalid administrator passcode.' };
       }
@@ -1660,11 +1670,13 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
       });
       const data = await parseJsonSafely(res);
       if (!data) {
+        setIsAdminBackendAvailable(false);
         return {
           ok: false,
           error: `Admin server endpoint did not return JSON (HTTP ${res.status}). If using the live/shared page, please republish the app so the backend server updates.`,
         };
       }
+      setIsAdminBackendAvailable(true);
       if (res.status === 403) {
         // Environment passcode or claimed credential became active after initial status check
         setAdminAuthMode('login');
@@ -1834,6 +1846,7 @@ export const PortfolioProvider: React.FC<{ children: ReactNode }> = ({ children 
         isAdminAuthenticated,
         isAuthReady,
         adminAuthMode,
+        isAdminBackendAvailable,
         adminLoginWithPasscode,
         adminClaimPasscode,
         adminLogout,

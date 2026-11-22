@@ -44,6 +44,7 @@ export const AdminPage: React.FC = () => {
     isAdminAuthenticated,
     isAuthReady,
     adminAuthMode,
+    isAdminBackendAvailable,
     adminLoginWithPasscode,
     adminClaimPasscode,
     adminLogout,
@@ -350,6 +351,15 @@ export const AdminPage: React.FC = () => {
                   : 'Enter your administrator passcode to manage projects, gallery artifacts, messages, and portfolio details.'}
               </p>
             </div>
+
+            {isAdminBackendAvailable === false && (
+              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-left text-[11px] text-amber-200 leading-relaxed flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <span>
+                  This live URL is not reaching the backend auth server yet. Please republish/update your Shared App in AI Studio and ensure <code className="text-amber-100">ADMIN_PASSCODE</code> is set in Secrets.
+                </span>
+              </div>
+            )}
 
             <form onSubmit={handlePasscodeSubmit} className="space-y-4 text-left">
               <div>
