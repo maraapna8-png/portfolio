@@ -2,6 +2,7 @@ import React from 'react';
 import { usePortfolio } from '../context/PortfolioContext';
 import { Calendar, Award, Sparkles, CheckCircle2, ChevronRight, Milestone } from 'lucide-react';
 import { motion } from 'motion/react';
+import { SmartImage } from '../components/SmartImage';
 
 export const HistoryPage: React.FC = () => {
   const { timelineItems, setActivePage } = usePortfolio();
@@ -89,11 +90,11 @@ export const HistoryPage: React.FC = () => {
                       {/* Optional Milestone Image */}
                       {item.imageUrl && (
                         <div className="relative h-36 w-full rounded-xl overflow-hidden bg-slate-950 mt-3 border border-slate-800">
-                          <img
+                          <SmartImage
                             src={item.imageUrl}
                             alt={item.title}
+                            fallbackTitle={item.title}
                             className="w-full h-full object-cover filter brightness-90"
-                            referrerPolicy="no-referrer"
                           />
                         </div>
                       )}

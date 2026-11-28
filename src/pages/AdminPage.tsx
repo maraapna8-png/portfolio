@@ -37,7 +37,8 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { resolveGalleryMedia, extractGoogleDriveId } from '../utils/mediaUtils';
+import { resolveGalleryMedia, extractGoogleDriveId, normalizeImageUrl } from '../utils/mediaUtils';
+import { SmartImage } from '../components/SmartImage';
 
 export const AdminPage: React.FC = () => {
   const {
@@ -129,6 +130,7 @@ export const AdminPage: React.FC = () => {
     featured: true,
     completionDate: '2026',
   });
+  const [projectImageStatus, setProjectImageStatus] = useState<'loading' | 'loaded' | 'error'>('loaded');
 
   // Gallery Form State
   const [editingGallery, setEditingGallery] = useState<GalleryItem | null>(null);
@@ -210,11 +212,14 @@ export const AdminPage: React.FC = () => {
     e.preventDefault();
     if (!projectForm.title.trim()) return;
 
+    const normalizedImage = normalizeImageUrl(projectForm.imageUrl) || projectForm.imageUrl.trim();
+    const cleanForm = { ...projectForm, imageUrl: normalizedImage };
+
     if (editingProject) {
-      updateProject(editingProject.id, projectForm);
+      updateProject(editingProject.id, cleanForm);
       setEditingProject(null);
     } else {
-      addProject(projectForm);
+      addProject(cleanForm);
       setIsAddingProject(false);
     }
   };
@@ -731,17 +736,21 @@ export const AdminPage: React.FC = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-slate-300 mb-1">
-                      Project Image / Screenshot URL
+                      Project Image / Screenshot URL *
                     </label>
                     <input
-                      type="url"
+                      type="text"
                       required
                       value={projectForm.imageUrl}
                       onChange={(e) =>
                         setProjectForm({ ...projectForm, imageUrl: e.target.value })
                       }
-                      className="w-full px-3 py-2 rounded-xl bg-[#050811] border border-blue-900/50 text-white text-xs focus:outline-none focus:border-cyan-400"
+                      placeholder="https://... (Direct image URL, Google Drive, Dropbox, GitHub)"
+                      className="w-full px-3 py-2 rounded-xl bg-[#050811] border border-blue-900/50 text-white text-xs focus:outline-none focus:border-cyan-400 placeholder:text-slate-500"
                     />
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      Supports direct image links (.png, .jpg, .webp), Google Drive share links, Dropbox, and GitHub links.
+                    </p>
                   </div>
 
                   <div>
@@ -749,7 +758,7 @@ export const AdminPage: React.FC = () => {
                       Live Website URL
                     </label>
                     <input
-                      type="url"
+                      type="text"
                       value={projectForm.liveUrl}
                       onChange={(e) =>
                         setProjectForm({ ...projectForm, liveUrl: e.target.value })
@@ -759,6 +768,39 @@ export const AdminPage: React.FC = () => {
                     />
                   </div>
                 </div>
+
+                {projectForm.imageUrl.trim() && (
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-3 rounded-xl bg-[#050811] border border-blue-900/40">
+                    <div className="w-28 h-16 rounded-lg overflow-hidden bg-slate-950 border border-slate-800 shrink-0">
+                      <SmartImage
+                        src={projectForm.imageUrl}
+                        alt={projectForm.title || 'Project Preview'}
+                        compactFallback
+                        onStatusChange={setProjectImageStatus}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="text-[11px] space-y-1">
+                      {projectImageStatus === 'loaded' && (
+                        <p className="text-emerald-400 font-semibold flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                          <span>Image preview loaded and ready to display.</span>
+                        </p>
+                      )}
+                      {projectImageStatus === 'loading' && (
+                        <p className="text-cyan-300 font-medium">Checking image preview...</p>
+                      )}
+                      {projectImageStatus === 'error' && (
+                        <p className="text-amber-300 leading-relaxed flex items-start gap-1.5">
+                          <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+                          <span>
+                            Preview could not load this URL as a direct image. If using Google Drive, set sharing to &ldquo;Anyone with the link&rdquo;; if using ImgBB/Postimages, paste the Direct Image Link ending in <code className="text-amber-100">.png</code> / <code className="text-amber-100">.jpg</code>.
+                          </span>
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
@@ -904,12 +946,14 @@ export const AdminPage: React.FC = () => {
                           </div>
                         </td>
                         <td className="p-4 flex items-center gap-3">
-                          <img
-                            src={p.imageUrl}
-                            alt={p.title}
-                            className="w-12 h-10 rounded-lg object-cover bg-slate-950 shrink-0 border border-blue-900/40"
-                            referrerPolicy="no-referrer"
-                          />
+                          <div className="w-12 h-10 rounded-lg overflow-hidden bg-slate-950 shrink-0 border border-blue-900/40">
+                            <SmartImage
+                              src={p.imageUrl}
+                              alt={p.title}
+                              compactFallback
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
                           <div>
                             <div className="font-bold text-white text-sm">{p.title}</div>
                             <div className="text-slate-400 line-clamp-1 text-[11px]">

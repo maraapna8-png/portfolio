@@ -38,7 +38,12 @@ import {
   initialContactSubmissions,
   initialSiteInfo,
 } from '../data/initialData';
-import { resolveGalleryMedia, extractGoogleDriveId } from '../utils/mediaUtils';
+import {
+  resolveGalleryMedia,
+  extractGoogleDriveId,
+  normalizeImageUrl,
+  sanitizeExternalUrl,
+} from '../utils/mediaUtils';
 import {
   db,
   auth,
@@ -193,14 +198,18 @@ const sanitizeProjectPayload = (
     fullDescription: clampStr(p.fullDescription, 5000),
     features: clampList(p.features, 20),
     technologies: clampList(p.technologies, 20),
-    imageUrl: clampStr(p.imageUrl, 2000),
+    imageUrl: clampStr(normalizeImageUrl(p.imageUrl) || p.imageUrl, 2000),
     featured: Boolean(p.featured),
     order: clampOrder(p.order, orderIndex),
     updatedAt: new Date().toISOString().slice(0, 64),
   };
 
-  if (typeof p.liveUrl === 'string') payload.liveUrl = clampStr(p.liveUrl, 2000);
-  if (typeof p.githubUrl === 'string') payload.githubUrl = clampStr(p.githubUrl, 2000);
+  if (typeof p.liveUrl === 'string') {
+    payload.liveUrl = clampStr(sanitizeExternalUrl(p.liveUrl) || p.liveUrl, 2000);
+  }
+  if (typeof p.githubUrl === 'string') {
+    payload.githubUrl = clampStr(sanitizeExternalUrl(p.githubUrl) || p.githubUrl, 2000);
+  }
   if (typeof p.challenges === 'string') payload.challenges = clampStr(p.challenges, 3000);
   if (typeof p.solution === 'string') payload.solution = clampStr(p.solution, 3000);
   if (typeof p.completionDate === 'string') payload.completionDate = clampStr(p.completionDate, 40);

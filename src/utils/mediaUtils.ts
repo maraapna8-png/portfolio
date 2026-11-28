@@ -171,6 +171,152 @@ export function resolveGalleryMedia(item: {
   return {
     isVideo: false,
     videoType: 'image' as const,
-    posterUrl: item.imageUrl || defaultPoster,
+    posterUrl: normalizeImageUrl(item.imageUrl) || defaultPoster,
   };
+}
+
+/**
+ * Sanitizes an external link URL (blocks javascript:, data:, vbscript: schemes).
+ */
+export function sanitizeExternalUrl(url?: string): string {
+  if (!url || typeof url !== 'string') return '';
+  let clean = url.trim().replace(/^['"]|['"]$/g, '');
+  if (!clean) return '';
+  const lower = clean.toLowerCase();
+  if (
+    lower.startsWith('javascript:') ||
+    lower.startsWith('vbscript:') ||
+    lower.startsWith('data:')
+  ) {
+    return '';
+  }
+  if (!/^https?:\/\//i.test(clean) && !clean.startsWith('/')) {
+    clean = `https://${clean}`;
+  }
+  return clean;
+}
+
+/**
+ * Normalizes a pasted image/screenshot URL into a directly loadable image URL
+ * across Google Drive, Dropbox, GitHub blob, YouTube thumbnails, and relative assets.
+ */
+export function normalizeImageUrl(url?: string): string {
+  if (!url || typeof url !== 'string') return '';
+  let clean = url.trim().replace(/^['"]|['"]$/g, '');
+  if (!clean) return '';
+
+  const lower = clean.toLowerCase();
+  if (lower.startsWith('javascript:') || lower.startsWith('vbscript:')) {
+    return '';
+  }
+  if (lower.startsWith('data:')) {
+    return /^data:image\/(?:png|jpeg|jpg|webp|gif);base64,[a-z0-9+/=]+$/i.test(clean)
+      ? clean
+      : '';
+  }
+
+  // Local workspace assets
+  if (clean.startsWith('/assets/')) return clean;
+  if (clean.startsWith('assets/')) return `/${clean}`;
+
+  // Prepend https:// if user pasted a bare domain like i.imgur.com/abc.png
+  if (!/^https?:\/\//i.test(clean)) {
+    clean = `https://${clean}`;
+  }
+
+  // 1. Google Drive / Googleusercontent links
+  const driveId =
+    extractGoogleDriveId(clean) ||
+    clean.match(/lh3\.googleusercontent\.com\/d\/([a-zA-Z0-9_-]+)/)?.[1] ||
+    null;
+  if (driveId) {
+    return `https://drive.google.com/thumbnail?id=${driveId}&sz=w1200`;
+  }
+
+  // 2. YouTube links -> high-res thumbnail
+  const youtubeId = extractYouTubeId(clean);
+  if (youtubeId) {
+    return `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`;
+  }
+
+  // 3. GitHub /blob/ links -> raw.githubusercontent.com
+  const ghMatch = clean.match(
+    /^https?:\/\/github\.com\/([^/]+)\/([^/]+)\/blob\/(.+)$/i
+  );
+  if (ghMatch) {
+    return `https://raw.githubusercontent.com/${ghMatch[1]}/${ghMatch[2]}/${ghMatch[3]}`;
+  }
+
+  // 4. Dropbox share links -> raw=1
+  if (/^https?:\/\/(?:www\.)?dropbox\.com\//i.test(clean)) {
+    try {
+      const parsed = new URL(clean);
+      parsed.searchParams.delete('dl');
+      parsed.searchParams.set('raw', '1');
+      return parsed.toString();
+    } catch {
+      return clean.replace(/([?&])dl=[01]/g, '$1raw=1');
+    }
+  }
+
+  // 5. Imgur page link (without i.imgur.com or file extension)
+  const imgurMatch = clean.match(
+    /^https?:\/\/(?:www\.)?imgur\.com\/(?:gallery\/|a\/)?([a-zA-Z0-9]+)\/?(?:\?.*)?$/i
+  );
+  if (imgurMatch) {
+    return `https://i.imgur.com/${imgurMatch[1]}.png`;
+  }
+
+  return clean;
+}
+
+/**
+ * Generates an ordered list of fallback image URLs to attempt when loading an image.
+ */
+export function getImageCandidates(url?: string): string[] {
+  if (!url || typeof url !== 'string' || !url.trim()) return [];
+  const candidates: string[] = [];
+  const pushUnique = (val: string) => {
+    if (val && !candidates.includes(val)) candidates.push(val);
+  };
+
+  let clean = url.trim().replace(/^['"]|['"]$/g, '');
+  const lower = clean.toLowerCase();
+  if (lower.startsWith('javascript:') || lower.startsWith('vbscript:')) {
+    return [];
+  }
+
+  const normalized = normalizeImageUrl(clean);
+  pushUnique(normalized);
+
+  if (!clean.startsWith('/assets/') && !clean.startsWith('assets/') && !lower.startsWith('data:') && !/^https?:\/\//i.test(clean)) {
+    clean = `https://${clean}`;
+  }
+
+  // Extra Drive fallbacks in case thumbnail endpoint is blocked by browser cookies
+  const driveId =
+    extractGoogleDriveId(clean) ||
+    clean.match(/lh3\.googleusercontent\.com\/d\/([a-zA-Z0-9_-]+)/)?.[1] ||
+    null;
+  if (driveId) {
+    pushUnique(`https://drive.google.com/thumbnail?id=${driveId}&sz=w1200`);
+    pushUnique(`https://lh3.googleusercontent.com/d/${driveId}=w1200`);
+    pushUnique(`https://drive.google.com/uc?export=view&id=${driveId}`);
+  }
+
+  // Extra Imgur format fallbacks
+  const imgurMatch = clean.match(
+    /^https?:\/\/(?:www\.|i\.)?imgur\.com\/(?:gallery\/|a\/)?([a-zA-Z0-9]+)(?:\.[a-z]+)?\/?(?:\?.*)?$/i
+  );
+  if (imgurMatch && !/\.(png|jpg|jpeg|webp|gif)(\?.*)?$/i.test(clean)) {
+    pushUnique(`https://i.imgur.com/${imgurMatch[1]}.png`);
+    pushUnique(`https://i.imgur.com/${imgurMatch[1]}.jpg`);
+    pushUnique(`https://i.imgur.com/${imgurMatch[1]}.webp`);
+  }
+
+  if (/^https?:\/\//i.test(clean) || clean.startsWith('/')) {
+    pushUnique(clean);
+  }
+
+  return candidates;
 }

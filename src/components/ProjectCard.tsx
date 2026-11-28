@@ -3,6 +3,8 @@ import { Project } from '../types';
 import { usePortfolio } from '../context/PortfolioContext';
 import { ExternalLink, Eye, Code, ArrowUpRight, Sparkles } from 'lucide-react';
 import { motion } from 'motion/react';
+import { SmartImage } from './SmartImage';
+import { sanitizeExternalUrl } from '../utils/mediaUtils';
 
 interface ProjectCardProps {
   project: Project;
@@ -22,11 +24,11 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
       <div className="flex flex-col h-full rounded-2xl bg-[#080d1a]/95 backdrop-blur-xl border border-blue-900/30 overflow-hidden group-hover:border-blue-500/40 transition-colors">
         {/* Project Thumbnail */}
         <div className="relative h-48 sm:h-52 w-full overflow-hidden bg-slate-950">
-          <img
+          <SmartImage
             src={project.imageUrl}
             alt={project.title}
+            fallbackTitle={project.title}
             className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500 filter brightness-95 group-hover:brightness-105"
-            referrerPolicy="no-referrer"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-[#080d1a] via-transparent to-transparent opacity-80" />
 
@@ -85,9 +87,9 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
               <span>View Project</span>
             </button>
 
-            {project.liveUrl && (
+            {sanitizeExternalUrl(project.liveUrl) && (
               <a
-                href={project.liveUrl}
+                href={sanitizeExternalUrl(project.liveUrl)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700/60 text-xs font-semibold transition-all duration-200"

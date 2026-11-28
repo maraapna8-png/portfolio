@@ -2,6 +2,8 @@ import React from 'react';
 import { usePortfolio } from '../context/PortfolioContext';
 import { X, ExternalLink, Github, CheckCircle2, Cpu, Sparkles, ArrowRight, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { SmartImage } from './SmartImage';
+import { sanitizeExternalUrl } from '../utils/mediaUtils';
 
 export const ProjectModal: React.FC = () => {
   const { selectedProject, closeProjectModal, openHireMe } = usePortfolio();
@@ -30,11 +32,11 @@ export const ProjectModal: React.FC = () => {
         >
           {/* Header Image banner */}
           <div className="relative h-64 sm:h-72 w-full bg-slate-950 overflow-hidden shrink-0">
-            <img
+            <SmartImage
               src={selectedProject.imageUrl}
               alt={selectedProject.title}
+              fallbackTitle={selectedProject.title}
               className="w-full h-full object-cover object-center filter brightness-95"
-              referrerPolicy="no-referrer"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-[#080d1a] via-[#080d1a]/40 to-transparent" />
 
@@ -59,9 +61,9 @@ export const ProjectModal: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-2">
-                {selectedProject.liveUrl && (
+                {sanitizeExternalUrl(selectedProject.liveUrl) && (
                   <a
-                    href={selectedProject.liveUrl}
+                    href={sanitizeExternalUrl(selectedProject.liveUrl)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-semibold text-xs shadow-lg shadow-blue-600/30 hover:shadow-blue-500/50 transition-all"
@@ -70,9 +72,9 @@ export const ProjectModal: React.FC = () => {
                     <ExternalLink className="w-3.5 h-3.5" />
                   </a>
                 )}
-                {selectedProject.githubUrl && (
+                {sanitizeExternalUrl(selectedProject.githubUrl) && (
                   <a
-                    href={selectedProject.githubUrl}
+                    href={sanitizeExternalUrl(selectedProject.githubUrl)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="p-2 rounded-xl bg-slate-900/80 border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
